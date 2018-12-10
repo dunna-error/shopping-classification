@@ -1,1 +1,8 @@
-certifi==2018.10.15
+fire
+tqdm
+h5py
+keras
+numpy
+tensorflow
+six
+mmh3
