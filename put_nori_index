@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+curl -X PUT "localhost:9200/nori"  -H 'Content-Type: application/json' -d'
+{
+    "settings" : {
+        "index" : {
+            "number_of_shards" : 3,
+            "number_of_replicas" : 1
+        },
+        "analysis": {
+            "analyzer" :{
+                "nori": {
+                    "type": "cumstom",
+                    "tokenizer": "nori_tokenizer",
+                    "filter": ["pos_filter"]
+                }
+            },
+            // "tokenizer": {
+            //     "nori_tokeniser"
+            // },
+            "filter": {
+                "pos_filter": {
+                    "type": "nori_part_of_speech",
+                    "stoptags": [
+                        "E", "J", "IC", "MAG", "MAJ", "_NA", "SC", "SE",
+                        "SE", "SH", "SP", "SSC", "SSO", "UNA", "UNKNOWN",
+                        "VCP", "VCN", "VSV", "XPN", "XSA",  "XSV"
+                    ]
+                    // MM, NNB, NNBC, NNG, NNP, NP, NR, SF, SL, SN,
+                    // #TODO "SY", "VA", "VV", "VX", "XR", "XSN"
+                }
+            }
+        }
+    }
+}
+'
