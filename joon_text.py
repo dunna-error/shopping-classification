@@ -77,8 +77,10 @@ step-2) es nori를 이용한 형태소 분석
 step-3) stop_words를 이용한 2차 noise 제거 (token 단위)
 
 >> train EDA
-step-4) 
-step-5) stop words 보강
-step-6) 사전 보강
+step-4) stop words 보강
+step-5) 사전 보강
 
+>> modelling
+step-6) word2vec
+step-7) corpus
 '''
