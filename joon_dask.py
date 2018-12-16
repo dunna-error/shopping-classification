@@ -2,33 +2,31 @@ import dask.dataframe as dd
 import dask.array as da
 import h5py
 from misc import get_logger, Option
+import pandas as pd
 
 dask_array = []
 opt = Option('./config.json')
-
 dataset_dir = '/workspace/dataset/'
 
-# for fn in opt.train_data_list:
-#     f = h5py.File('/workspace/dataset/'+fn)
-#     print([x for x in f.keys()])
-#     d = f['train']['product']
-#     print([x for x in d.keys()])
-    # array = da.from_array(d, chunks=(opt.chunk_size, ))
-    # dask_array.append(array)
-# dask_array = da.concatenate(dask_array)
-# sr = dd.from_dask_array(dask_array)
-# prv = sr.head()
-# print(prv)
 
+dd_list = []
 for fn in opt.train_data_list:
-    # f = h5py.File('/workspace/dataset/'+fn)
-    # df = dd.read_hdf(f, key='train')
+    f = h5py.File('/workspace/dataset/'+fn)
+    g = f.require_group('train')
+    temp = dd.concat([dd.from_array(g[k], chunksize=g[k].shape[0], columns=k)
+                      for k in g.keys() if k != 'img_feat'], axis=1)
+    dd_list.append(temp)
 
-    df = dd.read_hdf(['/workspace/dataset/'+fn], key='/*')
+ddf = dd.concat(dd_list, interleave_partitions=True)
+print(ddf.columns)
+ddf.product = ddf.product.str.decode('utf-8')
 
-    # df = [dd.read_hdf(f, key=k) for k in f.keys()]
+sr_product = pd.Series([v for k, v in ddf.product.iteritems()])
+# sr_product.to_pickle(dataset_dir+'sr_product.pkl')
+# print(sr_product.head())
+# da.to_hdf5(dataset_dir+'product.h5', 'product', ddf['product'].values)
+# df.to_pickle(dataset_dir+'df_product.pkl')
+# print()
 
-    # print(df.head())
-
-# df = dd.read_hdf('/workspace/dataset/test', key='', chunksize=opt.chunk_size)
-# print(df.head())
+# corpus = df.
+# print(len(df))
