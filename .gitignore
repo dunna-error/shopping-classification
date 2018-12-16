@@ -5,5 +5,3 @@
 *.ipynb_checkpoints/
 *.csv
 *.dat
-*.cPickle
-*.pickle
