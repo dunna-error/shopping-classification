@@ -151,6 +151,7 @@ class Data:
                   for i in range(0, total, chunk_size)]
         return chunks
 
+    # temp_chunk 에다가 cPickle로 저장..?
     def preprocessing(self, data_path_list, div, begin_offset, end_offset, out_path):
         self.div = div
         reader = Reader(data_path_list, div, begin_offset, end_offset)
@@ -193,31 +194,39 @@ class Data:
             return [None] * 2
         Y = to_categorical(Y, len(self.y_vocab))
 
-        product = h['product'][i]
-        if six.PY3:
-            product = product.decode('utf-8')
-        product = re_sc.sub(' ', product).strip().split()
-        words = [w.strip() for w in product]
-        words = [w for w in words
-                 if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
-        if not words:
-            return [None] * 2
+        # todo : Y 출력
 
-        hash_func = hash if six.PY2 else lambda x: mmh3.hash(x, seed=17)
-        x = [hash_func(w) % opt.unigram_hash_size + 1 for w in words]
-        xv = Counter(x).most_common(opt.max_len)
+        # product = h['product'][i]
+        # if six.PY3:
+        #     product = product.decode('utf-8')
+        # product = re_sc.sub(' ', product).strip().split()
+        # words = [w.strip() for w in product]
+        # words = [w for w in words
+        #          if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
+        # if not words:
+        #     return [None] * 2
+        # hash_func = hash if six.PY2 else lambda x: mmh3.hash(x, seed=17)
+        # x = [hash_func(w) % opt.unigram_hash_size + 1 for w in words]
+        # xv = Counter(x).most_common(opt.max_len)
+        # x = np.zeros(opt.max_len, dtype=np.float32)
+        # v = np.zeros(opt.max_len, dtype=np.int32)
+        # for i in range(len(xv)):
+        #     x[i] = xv[i][0]
+        #     v[i] = xv[i][1]
 
-        x = np.zeros(opt.max_len, dtype=np.float32)
-        v = np.zeros(opt.max_len, dtype=np.int32)
-        for i in range(len(xv)):
-            x[i] = xv[i][0]
-            v[i] = xv[i][1]
-        return Y, (x, v)
+        tag = h['']
+        img_feat = h['img_feat']
+        price_lev = h['']
+        # word_feat = h['']
+        aging = h['']
+
+        # return Y, (tag, img_feat, price_lev, word_feat, aging)
+        return Y, (tag, img_feat, price_lev, aging)
 
     def create_dataset(self, g, size, num_classes):
         g.create_dataset('y_bocab', (size, num_classes), chunks=True, dtype=np.int32)
         g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
-        g.create_dataset('image_feature', (size, opt.image_len), chunks=True, dtype=np.int32) # [0, 0.8, ... 0.9, 0.1]
+        g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.int32) # [0, 0.8, ... 0.9, 0.1]
         g.create_dataset('price_level', (size,), chunks=True, dtype=np.int32) # 1,2,3
         g.create_dataset('aging', (size,), chunks=True, dtype=np.float)
         # g.create_dataset('word_feature')
@@ -313,6 +322,7 @@ class Data:
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
             self.logger.info('processing %s ...' % path)
+            # preprocessing -> parse_data 에서 생성한 임시 데이터(cPickle)을 불러옴
             data = list(enumerate(cPickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
             for data_idx, (pid, y, vw) in data:
