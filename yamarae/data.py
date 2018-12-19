@@ -3,8 +3,10 @@ os.environ['OMP_NUM_THREADS'] = '1'
 
 import sys
 import pickle
+import datetime
+import time
 import traceback
-from collections import Counter
+# from collections import Counter
 from multiprocessing import Pool
 
 import tqdm
@@ -13,7 +15,7 @@ import h5py
 import numpy as np
 # import mmh3
 import six
-from keras.utils.np_utils import to_categorical
+# from keras.utils.np_utils import to_categorical
 from six.moves import cPickle
 
 from misc import get_logger, Option
@@ -113,10 +115,16 @@ def build_y_vocab(data):
 
 class Data:
     y_vocab_path = './data/y_vocab.cPickle' if six.PY2 else './data/y_vocab.py3.cPickle'
+    price_quantile_dict_path = './data/price_quantile_dict.pickle'
+    time_aging_dict_path = './data/time_aging_dict.pickle'
+    valid_tag_dict_path = './data/valid_tag_dict.pickle'
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
         self.logger = get_logger('data')
+        self.price_quantile_dict = pickle.load(open(self.price_quantile_dict_path, 'rb'))
+        self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
+        self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -151,13 +159,12 @@ class Data:
                   for i in range(0, total, chunk_size)]
         return chunks
 
-    # temp_chunk 에다가 cPickle로 저장..?
     def preprocessing(self, data_path_list, div, begin_offset, end_offset, out_path):
         self.div = div
         reader = Reader(data_path_list, div, begin_offset, end_offset)
         rets = []
         for pid, label, h, i in reader.generate():
-            y, x = self.parse_data(label, h, i)
+            y, x = self.parse_data(label, h, i, div)
             if y is None:
                 continue
             rets.append((pid, y, x))
@@ -186,77 +193,107 @@ class Data:
             raise
         return num_chunks
 
-    def parse_data(self, label, h, i):
-        Y = self.y_vocab.get(label)
-        if Y is None and self.div in ['dev', 'test']:
-            Y = 0
-        if Y is None and self.div != 'test':
-            return [None] * 2
-        Y = to_categorical(Y, len(self.y_vocab))
+    def _check_valid_keyword(self, keyword):
+        if keyword is np.nan:
+            return False
+        else:
+            if any(exception in keyword for exception in opt.exception_word_list):
+                return False
+            elif keyword in opt.exception_tag_list:
+                return False
+            else:
+                return True
 
-        # todo : Y 출력
+    def _get_encoded_tag(self, key):
+        if key in self.valid_tag_dict:
+            return self.valid_tag_dict[key]
+        else:
+            return self.valid_tag_dict["-1"]
 
-        # product = h['product'][i]
-        # if six.PY3:
-        #     product = product.decode('utf-8')
-        # product = re_sc.sub(' ', product).strip().split()
-        # words = [w.strip() for w in product]
-        # words = [w for w in words
-        #          if len(w) >= opt.min_word_length and len(w) < opt.max_word_length]
-        # if not words:
-        #     return [None] * 2
-        # hash_func = hash if six.PY2 else lambda x: mmh3.hash(x, seed=17)
-        # x = [hash_func(w) % opt.unigram_hash_size + 1 for w in words]
-        # xv = Counter(x).most_common(opt.max_len)
-        # x = np.zeros(opt.max_len, dtype=np.float32)
-        # v = np.zeros(opt.max_len, dtype=np.int32)
-        # for i in range(len(xv)):
-        #     x[i] = xv[i][0]
-        #     v[i] = xv[i][1]
+    def _get_trimed_tag(self, brand, maker):
+        brand_valid = self._check_valid_keyword(brand)
+        maker_valid = self._check_valid_keyword(maker)
+        if brand_valid:
+            return self._get_encoded_tag(brand)
+        else:
+            if maker_valid:
+                return self._get_encoded_tag(brand)
+        return self.valid_tag_dict["-1"]
 
-        tag = h['']
-        img_feat = h['img_feat']
-        price_lev = h['']
+    def _get_price_level(self, price):
+        if price == -1:
+            return 2
+        elif price == np.nan:
+            return 2
+        else:
+            if price < self.price_quantile_dict['quantile_1']:
+                return 1
+            elif price > self.price_quantile_dict['quantile_2']:
+                return 3
+            else:
+                return 2
+
+    def _get_unix_time_aging(self, stand_unix_time, time_str, div):
+        date_str = time_str[2:10]
+        unix_time = time.mktime(datetime.datetime.strptime(date_str, "%Y%m%d").timetuple())
+        aging = stand_unix_time - unix_time
+        a_min = self.time_aging_dict[div]['min']
+        a_max = self.time_aging_dict[div]['max']
+        norm_aging = (aging - a_min) / (a_max - a_min)
+        return norm_aging
+
+    def parse_data(self, label, h, i, div):
+        tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
+        img_feat = h['img_feat'][i]
+        price_lev = self._get_price_level(h['price'][i])
+        div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
+        aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
         # word_feat = h['']
-        aging = h['']
+        # return Y, (tag, img_feat, price_lev, aging, word_feat)
+        return label, (tag, img_feat, price_lev, aging)
 
-        # return Y, (tag, img_feat, price_lev, word_feat, aging)
-        return Y, (tag, img_feat, price_lev, aging)
-
-    def create_dataset(self, g, size, num_classes):
-        g.create_dataset('y_bocab', (size, num_classes), chunks=True, dtype=np.int32)
+    def create_dataset(self, g, size):
+        g.create_dataset('y_bocab', (size,), chunks=True, dtype=np.str)
         g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
         g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.int32) # [0, 0.8, ... 0.9, 0.1]
-        g.create_dataset('price_level', (size,), chunks=True, dtype=np.int32) # 1,2,3
-        g.create_dataset('aging', (size,), chunks=True, dtype=np.float)
-        # g.create_dataset('word_feature')
+        g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32) # 1,2,3
+        g.create_dataset('aging', (size,), chunks=True, dtype=np.float32)
+        # g.create_dataset('word_feat')
+        g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
-    def init_chunk(self, chunk_size, num_classes):
-        chunk_shape = (chunk_size, opt.max_len)
+    def init_chunk(self, chunk_size):
         chunk = {}
-        chunk['uni'] = np.zeros(shape=chunk_shape, dtype=np.int32)
-        chunk['w_uni'] = np.zeros(shape=chunk_shape, dtype=np.float32)
-        chunk['cate'] = np.zeros(shape=(chunk_size, num_classes), dtype=np.int32)
+        chunk['y_bocab'] = np.zeros(shape=chunk_size, dtype=np.str)
+        chunk['tag'] = np.zeros(shape=chunk_size, dtype=np.int32)
+        chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_feat_len), dtype=np.float32)
+        chunk['price_lev'] = np.zeros(shape=chunk_size, dtype=np.int32)
+        chunk['aging'] = np.zeros(shape=chunk_size, dtype=np.float32)
+        # chunk['word_feat'] = np.zeros()
         chunk['pid'] = []
         chunk['num'] = 0
         return chunk
 
     def copy_chunk(self, dataset, chunk, offset, with_pid_field=False):
         num = chunk['num']
-        dataset['uni'][offset:offset + num, :] = chunk['uni'][:num]
-        dataset['w_uni'][offset:offset + num, :] = chunk['w_uni'][:num]
-        dataset['cate'][offset:offset + num] = chunk['cate'][:num]
+        dataset['y_bocab'][offset:offset + num, :] = chunk['y_bocab'][:num]
+        dataset['tag'][offset:offset + num, :] = chunk['tag'][:num]
+        dataset['img_feat'][offset:offset + num] = chunk['img_feat'][:num]
+        dataset['price_lev'][offset:offset + num] = chunk['price_lev'][:num]
+        dataset['aging'][offset:offset + num] = chunk['aging'][:num]
+        # dataset['word_feat'][offset:offset + num] = chunk['word_feat'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
 
-    def copy_bulk(self, A, B, offset, y_offset, with_pid_field=False):
-        num = B['cate'].shape[0]
-        y_num = B['cate'].shape[1]
-        A['uni'][offset:offset + num, :] = B['uni'][:num]
-        A['w_uni'][offset:offset + num, :] = B['w_uni'][:num]
-        A['cate'][offset:offset + num, y_offset:y_offset + y_num] = B['cate'][:num]
-        if with_pid_field:
-            A['pid'][offset:offset + num] = B['pid'][:num]
+    # def copy_bulk(self, A, B, offset, with_pid_field=False):
+    #     num = B['y_bocab'].shape[0]
+    #     A['y_bocab'][offset:offset + num, :] = B['y_bocab'][:num]
+    #     A['tag'][offset:offset + num, :] = B['tag'][:num]
+    #     A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
+    #     A['price_lev'][offset:offset + num, :] = B['price_lev'][:num]
+    #     A['aging'][offset:offset + num, :] = B['aging'][:num]
+    #     A['word_feat'][offset:offset + num, :] = B['word_feat'][:num]
+    #     if with_pid_field:
+    #         A['pid'][offset:offset + num] = B['pid'][:num]
 
     def get_train_indices(self, size, train_ratio):
         train_indices = np.random.rand(size) < train_ratio
@@ -307,40 +344,40 @@ class Data:
 
         train = data_fout.create_group('train')
         dev = data_fout.create_group('dev')
-        self.create_dataset(train, train_size, len(self.y_vocab))
-        self.create_dataset(dev, dev_size, len(self.y_vocab))
+        self.create_dataset(train, train_size)
+        self.create_dataset(dev, dev_size)
         self.logger.info('train_size ~ %s, dev_size ~ %s' % (train_size, dev_size))
 
         sample_idx = 0
         dataset = {'train': train, 'dev': dev}
         num_samples = {'train': 0, 'dev': 0}
         chunk_size = opt.db_chunk_size
-        chunk = {'train': self.init_chunk(chunk_size, len(self.y_vocab)),
-                 'dev': self.init_chunk(chunk_size, len(self.y_vocab))}
+        chunk = {'train': self.init_chunk(chunk_size),
+                 'dev': self.init_chunk(chunk_size)}
         chunk_order = list(range(num_input_chunks))
         np.random.shuffle(chunk_order)
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
             self.logger.info('processing %s ...' % path)
-            # preprocessing -> parse_data 에서 생성한 임시 데이터(cPickle)을 불러옴
             data = list(enumerate(cPickle.loads(open(path, 'rb').read())))
             np.random.shuffle(data)
-            for data_idx, (pid, y, vw) in data:
+            for data_idx, (pid, y, x) in data:
                 if y is None:
                     continue
-                v, w = vw
+                tag, img_feat, price_lev, aging = x
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
                 if all_train:
                     is_train = True
-                if v is None:
-                    continue
                 c = chunk['train'] if is_train else chunk['dev']
                 idx = c['num']
-                c['uni'][idx] = v
-                c['w_uni'][idx] = w
-                c['cate'][idx] = y
+                c['y_bocab'][idx] = y
+                c['tag'][idx] = tag
+                c['img_feat'][idx] = img_feat
+                c['price_lev'][idx] = price_lev
+                c['aging'][idx] = aging
+                # c['word_feat'][idx] = word_feat
                 c['num'] += 1
                 if not is_train:
                     c['pid'].append(np.string_(pid))
@@ -349,7 +386,7 @@ class Data:
                         self.copy_chunk(dataset[t], chunk[t], num_samples[t],
                                         with_pid_field=t == 'dev')
                         num_samples[t] += chunk[t]['num']
-                        chunk[t] = self.init_chunk(chunk_size, len(self.y_vocab))
+                        chunk[t] = self.init_chunk(chunk_size)
             sample_idx += len(data)
         for t in ['train', 'dev']:
             if chunk[t]['num'] > 0:
@@ -360,10 +397,12 @@ class Data:
         for div in ['train', 'dev']:
             ds = dataset[div]
             size = num_samples[div]
-            shape = (size, opt.max_len)
-            ds['uni'].resize(shape)
-            ds['w_uni'].resize(shape)
-            ds['cate'].resize((size, len(self.y_vocab)))
+            ds['y_bocab'].resize(size)
+            ds['tag'].resize(size)
+            ds['img_feat'].resize((size, opt.img_feat_len))
+            ds['price_lev'].resize(size)
+            ds['aging'].resize(size)
+            # ds['word_feat'].resize()
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}
