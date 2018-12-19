@@ -13,5 +13,5 @@
     "chunk_size": 20000,
     "db_chunk_size": 100000,
     "num_workers": 6,
-    "image_len": 2048
+    "img_feat_len": 2048
 }
