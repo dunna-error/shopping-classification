@@ -12,6 +12,23 @@
     ],
     "chunk_size": 20000,
     "db_chunk_size": 100000,
-    "num_workers": 6,
-    "img_feat_len": 2048
+    "num_workers": 3,
+    "img_feat_len": 2048,
+
+    "exception_word_list": [
+        "참조",
+        "없음",
+        "표기",
+        "별도",
+        "상세",
+        "자체",
+        "불명",
+        "미입력",
+        "공개불가"
+    ],
+    "exception_tag_list": [
+        "기타",
+        "",
+        "."
+    ]
 }
