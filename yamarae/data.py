@@ -9,6 +9,7 @@ import traceback
 # from collections import Counter
 from multiprocessing import Pool
 
+import gensim
 import tqdm
 import fire
 import h5py
@@ -119,6 +120,7 @@ class Data:
     time_aging_dict_path = './data/time_aging_dict.pickle'
     valid_tag_dict_path = './data/valid_tag_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
+    b2v_model_path = './data/b2v.model'
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
@@ -127,6 +129,7 @@ class Data:
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
         self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
+        self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -212,15 +215,33 @@ class Data:
         else:
             return self.valid_tag_dict["-1"]
 
-    def _get_trimed_tag(self, brand, maker):
+    def _get_encoded_raw_tag(self, key):
+        if key in self.b2v_dict:
+            return self.b2v_dict[key]
+        else:
+            return self.b2v_dict["-1"]
+
+    def _get_trimed_tag(self, brand, maker, raw_flag=False):
         brand_valid = self._check_valid_keyword(brand)
         maker_valid = self._check_valid_keyword(maker)
         if brand_valid:
-            return self._get_encoded_tag(brand)
+            if raw_flag:
+                return self._get_encoded_raw_tag(brand)
+            else:
+                return self._get_encoded_tag(brand)
         else:
             if maker_valid:
-                return self._get_encoded_tag(brand)
+                if raw_flag:
+                    return self._get_encoded_raw_tag(brand)
+                else:
+                    return self._get_encoded_tag(brand)
         return self.valid_tag_dict["-1"]
+
+    def _get_b2v(self, tag):
+        if tag in self.b2v_model.wv.vocab:
+            return self.b2v_model.wv[tag]
+        else:
+            return np.zeros(opt.b2v_feat_len)
 
     def _get_price_level(self, price):
         if price == -1:
@@ -249,18 +270,21 @@ class Data:
         if Y is None and self.div in ['dev', 'test']:
             Y = -1
 
-        tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
+        tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=False)
+        raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
+        b2v = self._get_b2v(str(raw_tag))
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
         aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
         # word_feat = h['']
-        # return Y, (tag, img_feat, price_lev, aging, word_feat)
-        return Y, (tag, img_feat, price_lev, aging)
+        # return Y, (tag, b2v, img_feat, price_lev, aging, word_feat)
+        return Y, (tag, b2v, img_feat, price_lev, aging)
 
     def create_dataset(self, g, size):
         g.create_dataset('y', (size,), chunks=True, dtype=np.int32) # encoded vocab
         g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
+        g.create_dataset('b2v', (size, opt.b2v_feat_len), chunks=True, dtype=np.float32) # [0, 0.8, ... 0.9, 0.1]
         g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.float32) # [0, 0.8, ... 0.9, 0.1]
         g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32) # 1,2,3
         g.create_dataset('aging', (size,), chunks=True, dtype=np.float32)
@@ -271,6 +295,7 @@ class Data:
         chunk = {}
         chunk['y'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['tag'] = np.zeros(shape=chunk_size, dtype=np.int32)
+        chunk['b2v'] = np.zeros(shape=(chunk_size, opt.b2v_feat_len), dtype=np.float32)
         chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_feat_len), dtype=np.float32)
         chunk['price_lev'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['aging'] = np.zeros(shape=chunk_size, dtype=np.float32)
@@ -283,6 +308,7 @@ class Data:
         num = chunk['num']
         dataset['y'][offset:offset + num] = chunk['y'][:num]
         dataset['tag'][offset:offset + num] = chunk['tag'][:num]
+        dataset['b2v'][offset:offset + num, :] = chunk['b2v'][:num]
         dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
         dataset['price_lev'][offset:offset + num] = chunk['price_lev'][:num]
         dataset['aging'][offset:offset + num] = chunk['aging'][:num]
@@ -359,7 +385,7 @@ class Data:
             for data_idx, (pid, y, x) in data:
                 if y is None:
                     continue
-                tag, img_feat, price_lev, aging = x
+                tag, b2v, img_feat, price_lev, aging = x
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -369,6 +395,7 @@ class Data:
                 idx = c['num']
                 c['y'][idx] = y
                 c['tag'][idx] = tag
+                c['b2v'][idx] = b2v
                 c['img_feat'][idx] = img_feat
                 c['price_lev'][idx] = price_lev
                 c['aging'][idx] = aging
@@ -388,16 +415,6 @@ class Data:
                 self.copy_chunk(dataset[t], chunk[t], num_samples[t],
                                 with_pid_field=t == 'dev')
                 num_samples[t] += chunk[t]['num']
-
-        # for div in ['train', 'dev']:
-        #     ds = dataset[div]
-        #     size = num_samples[div]
-        #     ds['y'].resize(size)
-        #     ds['tag'].resize(size)
-        #     ds['img_feat'].resize((size, opt.img_feat_len))
-        #     ds['price_lev'].resize(size)
-        #     ds['aging'].resize(size)
-        #     ds['word_feat'].resize()
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}

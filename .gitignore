@@ -6,3 +6,5 @@
 *.csv
 *.dat
 *.h5py
+*.npy
+*.model

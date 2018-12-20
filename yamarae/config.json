@@ -6,14 +6,13 @@
         "../../dataset/dev.chunk.01"
     ],
     "test_data_list": [
-        "../../dataset/test.chunk.01",
-        "../../dataset/test.chunk.02"
+        "../../dataset/test.chunk.01"
     ],
     "chunk_size": 20000,
     "db_chunk_size": 100000,
     "num_workers": 3,
     "img_feat_len": 2048,
-
+    "b2v_feat_len": 200,
     "exception_word_list": [
         "참조",
         "없음",
