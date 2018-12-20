@@ -118,6 +118,7 @@ class Data:
     price_quantile_dict_path = './data/price_quantile_dict.pickle'
     time_aging_dict_path = './data/time_aging_dict.pickle'
     valid_tag_dict_path = './data/valid_tag_dict.pickle'
+    b2v_dict_path = './data/b2v_dict.pickle'
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
@@ -125,6 +126,7 @@ class Data:
         self.price_quantile_dict = pickle.load(open(self.price_quantile_dict_path, 'rb'))
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
         self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
+        self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -259,7 +261,7 @@ class Data:
     def create_dataset(self, g, size):
         g.create_dataset('y', (size,), chunks=True, dtype=np.int32) # encoded vocab
         g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
-        g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.int32) # [0, 0.8, ... 0.9, 0.1]
+        g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.float32) # [0, 0.8, ... 0.9, 0.1]
         g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32) # 1,2,3
         g.create_dataset('aging', (size,), chunks=True, dtype=np.float32)
         # g.create_dataset('word_feat')
@@ -287,17 +289,6 @@ class Data:
         # dataset['word_feat'][offset:offset + num] = chunk['word_feat'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
-
-    # def copy_bulk(self, A, B, offset, with_pid_field=False):
-    #     num = B['y'].shape[0]
-    #     A['y'][offset:offset + num, :] = B['y'][:num]
-    #     A['tag'][offset:offset + num, :] = B['tag'][:num]
-    #     A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
-    #     A['price_lev'][offset:offset + num, :] = B['price_lev'][:num]
-    #     A['aging'][offset:offset + num, :] = B['aging'][:num]
-    #     A['word_feat'][offset:offset + num, :] = B['word_feat'][:num]
-    #     if with_pid_field:
-    #         A['pid'][offset:offset + num] = B['pid'][:num]
 
     def get_train_indices(self, size, train_ratio):
         train_indices = np.random.rand(size) < train_ratio
