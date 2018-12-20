@@ -376,7 +376,7 @@ class Data:
         chunk = {'train': self.init_chunk(chunk_size),
                  'dev': self.init_chunk(chunk_size)}
         chunk_order = list(range(num_input_chunks))
-        np.random.shuffle(chunk_order)
+        np.random.shuffle(chunk_order) 
         for input_chunk_idx in chunk_order:
             path = os.path.join(self.tmp_chunk_tpl % input_chunk_idx)
             self.logger.info('processing %s ...' % path)
