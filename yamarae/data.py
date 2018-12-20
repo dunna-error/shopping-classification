@@ -243,6 +243,10 @@ class Data:
         return norm_aging
 
     def parse_data(self, label, h, i, div):
+        Y = self.y_vocab.get(label)
+        if Y is None and self.div in ['dev', 'test']:
+            Y = -1
+
         tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
@@ -250,10 +254,10 @@ class Data:
         aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
         # word_feat = h['']
         # return Y, (tag, img_feat, price_lev, aging, word_feat)
-        return label, (tag, img_feat, price_lev, aging)
+        return Y, (tag, img_feat, price_lev, aging)
 
     def create_dataset(self, g, size):
-        g.create_dataset('y_bocab', (size,), chunks=True, dtype=np.str)
+        g.create_dataset('y', (size,), chunks=True, dtype=np.int32) # encoded vocab
         g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
         g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.int32) # [0, 0.8, ... 0.9, 0.1]
         g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32) # 1,2,3
@@ -263,7 +267,7 @@ class Data:
 
     def init_chunk(self, chunk_size):
         chunk = {}
-        chunk['y_bocab'] = np.zeros(shape=chunk_size, dtype=np.str)
+        chunk['y'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['tag'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_feat_len), dtype=np.float32)
         chunk['price_lev'] = np.zeros(shape=chunk_size, dtype=np.int32)
@@ -275,9 +279,9 @@ class Data:
 
     def copy_chunk(self, dataset, chunk, offset, with_pid_field=False):
         num = chunk['num']
-        dataset['y_bocab'][offset:offset + num, :] = chunk['y_bocab'][:num]
-        dataset['tag'][offset:offset + num, :] = chunk['tag'][:num]
-        dataset['img_feat'][offset:offset + num] = chunk['img_feat'][:num]
+        dataset['y'][offset:offset + num] = chunk['y'][:num]
+        dataset['tag'][offset:offset + num] = chunk['tag'][:num]
+        dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
         dataset['price_lev'][offset:offset + num] = chunk['price_lev'][:num]
         dataset['aging'][offset:offset + num] = chunk['aging'][:num]
         # dataset['word_feat'][offset:offset + num] = chunk['word_feat'][:num]
@@ -285,8 +289,8 @@ class Data:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
 
     # def copy_bulk(self, A, B, offset, with_pid_field=False):
-    #     num = B['y_bocab'].shape[0]
-    #     A['y_bocab'][offset:offset + num, :] = B['y_bocab'][:num]
+    #     num = B['y'].shape[0]
+    #     A['y'][offset:offset + num, :] = B['y'][:num]
     #     A['tag'][offset:offset + num, :] = B['tag'][:num]
     #     A['img_feat'][offset:offset + num, :] = B['img_feat'][:num]
     #     A['price_lev'][offset:offset + num, :] = B['price_lev'][:num]
@@ -372,7 +376,7 @@ class Data:
                     is_train = True
                 c = chunk['train'] if is_train else chunk['dev']
                 idx = c['num']
-                c['y_bocab'][idx] = y
+                c['y'][idx] = y
                 c['tag'][idx] = tag
                 c['img_feat'][idx] = img_feat
                 c['price_lev'][idx] = price_lev
@@ -394,15 +398,15 @@ class Data:
                                 with_pid_field=t == 'dev')
                 num_samples[t] += chunk[t]['num']
 
-        for div in ['train', 'dev']:
-            ds = dataset[div]
-            size = num_samples[div]
-            ds['y_bocab'].resize(size)
-            ds['tag'].resize(size)
-            ds['img_feat'].resize((size, opt.img_feat_len))
-            ds['price_lev'].resize(size)
-            ds['aging'].resize(size)
-            # ds['word_feat'].resize()
+        # for div in ['train', 'dev']:
+        #     ds = dataset[div]
+        #     size = num_samples[div]
+        #     ds['y'].resize(size)
+        #     ds['tag'].resize(size)
+        #     ds['img_feat'].resize((size, opt.img_feat_len))
+        #     ds['price_lev'].resize(size)
+        #     ds['aging'].resize(size)
+        #     ds['word_feat'].resize()
 
         data_fout.close()
         meta = {'y_vocab': self.y_vocab}
