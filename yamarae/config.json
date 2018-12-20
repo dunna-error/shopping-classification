@@ -1,7 +1,8 @@
 {
     "train_data_list": [
-        "../../dataset/train.chunk.01"
-//        "../../dataset/train.chunk.02"
+        "../../dataset/train.chunk.01",
+        "../../dataset/train.chunk.02",
+        "../../dataset/train.chunk.03"
     ],
     "dev_data_list": [
         "../../dataset/dev.chunk.01"
@@ -12,7 +13,7 @@
     ],
     "chunk_size": 20000,
     "db_chunk_size": 100000,
-    "num_workers": 4,
+    "num_workers": 5,
     "img_feat_len": 2048,
 
     "exception_word_list": [
