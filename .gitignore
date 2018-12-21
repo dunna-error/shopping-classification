@@ -8,3 +8,4 @@
 *.h5py
 *.npy
 *.model
+server_config.json
