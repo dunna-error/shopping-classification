@@ -30,5 +30,6 @@
         "."
     ],
     "num_epochs": 100,
-    "batch_size": 1024
+    "batch_size": 1024,
+    "lr": 1e-4
 }

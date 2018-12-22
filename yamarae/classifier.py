@@ -71,9 +71,12 @@ class Classifier():
 
             # y label
             Y = ds['y'][left:right]
+            encoded_Y = np.zeros((Y.shape[0], self.num_classes))
+            for i in range(0, batch_size):
+                encoded_Y[i][Y[i]] = 1
 
-            # result return shape : (1024, 17891) // (1024,)
-            yield X, Y
+            # result return shape : (1024, 17891) // (1024, 4215)
+            yield X, encoded_Y
             left = right
             if right == limit:
                 left = 0
@@ -175,7 +178,6 @@ class Classifier():
 
         total_train_samples = train['y'].shape[0]
         train_gen = self.get_sample_generator(train, batch_size=opt.batch_size)
-        next(train_gen)
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         total_dev_samples = dev['y'].shape[0]
