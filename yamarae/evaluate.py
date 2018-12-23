@@ -27,7 +27,7 @@ def evaluate(predict_path, data_path, div, y_vocab_path):
     fin = open(predict_path, 'rb')
     hit, n = defaultdict(lambda: 0), defaultdict(lambda: 0)
     print('loading ground-truth...')
-    CATE = np.argmax(h['cate'], axis=1)
+    CATE = np.argmax(h['y'], axis=1)
     for p, y in zip(fin, CATE):
         pid, b, m, s, d = p.split('\t')
         b, m, s, d = list(map(int, [b, m, s, d]))

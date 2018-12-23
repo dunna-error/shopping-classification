@@ -36,67 +36,19 @@ def top1_acc(x, y):
 
 class ShopNet:
     def __init__(self):
-        self.logger = get_logger('textonly')
+        self.logger = get_logger('shopnet')
+        self.input_size = 17891
 
-    def get_model(self, num_classes, activation='sigmoid'):
-        # max_len = opt.max_len
-        # voca_size = opt.unigram_hash_size + 1
-        input_size = 17891
-
+    def get_model(self, num_classes):
         with tf.device('/gpu:0'):
-            # embd = Embedding(voca_size,
-            #                  opt.embd_size,
-            #                  name='uni_embd')
-            #
-            # t_uni = Input((max_len,), name="input_1")
-            # t_uni_embd = embd(t_uni)  # token
-            #
-            # w_uni = Input((max_len,), name="input_2")
-            # w_uni_mat = Reshape((max_len, 1))(w_uni)  # weight
-            #
-            # uni_embd_mat = dot([t_uni_embd, w_uni_mat], axes=1)
-            # uni_embd = Reshape((opt.embd_size, ))(uni_embd_mat)
-            #
-            # embd_out = Dropout(rate=0.5)(uni_embd)
-            # relu = Activation('relu', name='relu1')(embd_out)
-            # outputs = Dense(num_classes, activation=activation)(relu)
-            # model = Model(inputs=[t_uni, w_uni], outputs=outputs)
-            # optm = keras.optimizers.Nadam(opt.lr)
-            # model.compile(loss='binary_crossentropy',
-            #             optimizer=optm,
-            #             metrics=[top1_acc])
-            # model.summary(print_fn=lambda x: self.logger.info(x))
-
-            ## test
-            model = Sequential()
-            model.add(Dense(8192, activation='relu', input_dim=(input_size,)))
-            model.add(layers.Dropout(0.2))
-            model.add(Dense(4096, activation='relu'))
-            model.add(layers.Dropout(0.2))
-            model.add(Dense(1024, activation='softmax'))
             optm = keras.optimizers.Nadam(opt.lr)
-            # model.compile(loss='categorical_crossentropy', optimizer=optm, metrics=['accuracy'])
-            model.compile(loss='binary_crossentropy', optimizer=optm, metrics=[top1_acc])
-            model.summary(print_fn=lambda x: self.logger.info(x))
-
-            ## 참고
-            # optimizer = Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999)
-            #
-            # # wide part
-            # wide = Input(shape=(self.wide_input_dim,))
-            #
-            # # deep part
-            # deep_input = Input(shape=(self.deep_input_dim,))
-            # deep = Dense(200, activation='relu')(deep_input)
-            # deep = Dense(80, activation='relu')(deep)
-            # deep = Dense(10, activation='relu')(deep)
-            #
-            # # concatenate : wide and deep
-            # wide_n_deep = concatenate([wide, deep])
-            # wide_n_deep = Dense(1, activation='sigmoid')(wide_n_deep)
-            # model = Model(inputs=[wide, deep_input], outputs=wide_n_deep)
-            # model.compile(loss='binary_crossentropy',
-            #               optimizer=optimizer,
-            #               metrics=['accuracy'])
-            # return model
+            i_layer = Input(shape=(self.input_size,))
+            h_layer = Dense(8192, activation='relu')(i_layer)
+            h_layer = Dense(4096, activation='relu')(h_layer)
+            h_layer = Dense(1024, activation='relu')(h_layer)
+            o_layer = Dense(num_classes, activation='softmax')(h_layer)
+            model = Model(inputs=i_layer, outputs=o_layer)
+            model.compile(loss='categorical_crossentropy',
+                          optimizer=optm,
+                          metrics=[top1_acc])
         return model
