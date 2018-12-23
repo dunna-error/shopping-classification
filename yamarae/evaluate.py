@@ -26,7 +26,7 @@ def evaluate(predict_path, data_path, div, y_vocab_path):
     inv_y_vocab = {v: k for k, v in six.iteritems(y_vocab)}
     fin = open(predict_path, 'rb')
     hit, n = defaultdict(lambda: 0), defaultdict(lambda: 0)
-    print('loading ground-truth...')
+    print('loading ground-truth....')
     CATE = np.argmax(h['y'], axis=1)
     for p, y in zip(fin, CATE):
         pid, b, m, s, d = p.split('\t')

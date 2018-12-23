@@ -220,3 +220,4 @@ if __name__ == '__main__':
     clsf = Classifier()
     fire.Fire({'train': clsf.train,
                'predict': clsf.predict})
+

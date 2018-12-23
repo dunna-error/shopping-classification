@@ -51,4 +51,5 @@ class ShopNet:
             model.compile(loss='categorical_crossentropy',
                           optimizer=optm,
                           metrics=[top1_acc])
+
         return model
