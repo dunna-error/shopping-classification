@@ -81,7 +81,7 @@ class Classifier():
             for i in range(left-left, right-left):
                 encoded_Y[i][Y[i]] = 1
 
-            # result return shape : (1024, 17891) // (1024, 4215)
+            # result return shape : (1024, 2252) // (1024, 4215)
             yield X, encoded_Y
             left = right
             if right == limit:
@@ -174,7 +174,7 @@ class Classifier():
         self.logger.info('# of dev samples: %s' % dev['y'].shape[0])
 
         checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=1)
+                                     save_best_only=True, mode='min', period=10)
 
         shopnet = ShopNet()
         model = shopnet.get_model(self.num_classes)
