@@ -37,15 +37,15 @@ def top1_acc(x, y):
 class ShopNet:
     def __init__(self):
         self.logger = get_logger('shopnet')
-        self.input_size = 17891
+        self.input_size = 17891 - 15639
 
     def get_model(self, num_classes):
         with tf.device('/gpu:0'):
             optm = keras.optimizers.Nadam(opt.lr)
             i_layer = Input(shape=(self.input_size,))
-            h_layer = Dense(8192, activation='relu')(i_layer)
-            h_layer = Dense(4096, activation='relu')(h_layer)
+            h_layer = Dense(2048, activation='relu')(i_layer)
             h_layer = Dense(1024, activation='relu')(h_layer)
+            h_layer = Dense(512, activation='relu')(h_layer)
             o_layer = Dense(num_classes, activation='softmax')(h_layer)
             model = Model(inputs=i_layer, outputs=o_layer)
             model.compile(loss='categorical_crossentropy',

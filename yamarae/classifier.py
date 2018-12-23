@@ -62,17 +62,17 @@ class Classifier():
                 X = np.hstack((X, x))
 
             # 1-length categorical feature
-            for t in ['price_lev', 'tag']:
+            for t in ['price_lev']: # for t in ['price_lev', 'tag']:
                 x = ds[t][left:right]
                 encoded = np.zeros((x.shape[0], self.encoded_dict[t]))
-                for i in range(0, batch_size):
+                for i in range(left-left, right-left):
                     encoded[i][x[i] - 1] = 1
                 X = np.hstack((X, encoded))
 
             # y label
             Y = ds['y'][left:right]
             encoded_Y = np.zeros((Y.shape[0], self.num_classes))
-            for i in range(0, batch_size):
+            for i in range(left-left, right-left):
                 encoded_Y[i][Y[i]] = 1
 
             # result return shape : (1024, 17891) // (1024, 4215)
@@ -90,6 +90,8 @@ class Classifier():
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
+        print("hello")
+        print(pred_y)
         pid_order = []
         for data_path in DEV_DATA_LIST:
             h = h5py.File(data_path, 'r')['dev']
@@ -131,6 +133,7 @@ class Classifier():
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
+        self.num_classes = len(meta['y_vocab'])
         model = load_model(model_fname, custom_objects={'top1_acc': top1_acc})
 
         test_path = os.path.join(test_root, 'data.h5py')
