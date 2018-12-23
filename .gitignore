@@ -9,4 +9,5 @@
 *.h5py
 *.npy
 *.model
+*.h5
 server_config.json
