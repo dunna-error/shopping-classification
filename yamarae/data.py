@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+Edit by 'error모르겠다' Team
+Author : yoonkt200@gmail.com, joonable2@gmail.com
+"""
+
 import os
 os.environ['OMP_NUM_THREADS'] = '1'
 
@@ -21,7 +27,6 @@ import pickle
 import datetime
 import time
 import traceback
-# from collections import Counter
 from multiprocessing import Pool
 
 import gensim
@@ -29,9 +34,7 @@ import tqdm
 import fire
 import h5py
 import numpy as np
-# import mmh3
 import six
-# from keras.utils.np_utils import to_categorical
 from six.moves import cPickle
 
 from misc import get_logger, Option
@@ -447,4 +450,3 @@ if __name__ == '__main__':
     data = Data()
     fire.Fire({'make_db': data.make_db,
                'build_y_vocab': data.build_y_vocab})
-    

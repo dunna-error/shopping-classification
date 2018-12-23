@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+Edit by 'error모르겠다' Team
+Author : yoonkt200@gmail.com, joonable2@gmail.com
+"""
+
 import os
 import json
 import threading
@@ -90,13 +96,8 @@ class Classifier():
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
-        print("hello")
-        print(pred_y)
         pid_order = []
-        for data_path in DEV_DATA_LIST:
-            h = h5py.File(data_path, 'r')['dev']
-            pid_order.extend(h['pid'][::])
-
+        pid_order.extend(data['pid'][::])
         y2l = {i: s for s, i in six.iteritems(meta['y_vocab'])}
         y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
         inv_cate1 = self.get_inverted_cate1(cate1)
@@ -173,7 +174,7 @@ class Classifier():
         self.logger.info('# of dev samples: %s' % dev['y'].shape[0])
 
         checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=10)
+                                     save_best_only=True, mode='min', period=1)
 
         shopnet = ShopNet()
         model = shopnet.get_model(self.num_classes)
