@@ -131,8 +131,7 @@ class Classifier():
 
         model_fname = os.path.join(model_root, 'model.h5')
         self.logger.info('# of classes(train): %s' % len(meta['y_vocab']))
-        model = load_model(model_fname,
-                           custom_objects={'top1_acc': top1_acc})
+        model = load_model(model_fname, custom_objects={'top1_acc': top1_acc})
 
         test_path = os.path.join(test_root, 'data.h5py')
         test_data = h5py.File(test_path, 'r')
@@ -141,10 +140,10 @@ class Classifier():
         batch_size = opt.batch_size
         pred_y = []
         test_gen = ThreadsafeIter(self.get_sample_generator(test, batch_size, raise_stop_event=True))
-        total_test_samples = test['uni'].shape[0]
+        total_test_samples = test['y'].shape[0]
         with tqdm.tqdm(total=total_test_samples) as pbar:
             for chunk in test_gen:
-                total_test_samples = test['uni'].shape[0]
+                total_test_samples = test['y'].shape[0]
                 X, _ = chunk
                 _pred_y = model.predict(X)
                 pred_y.extend([np.argmax(y) for y in _pred_y])
