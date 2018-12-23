@@ -12,10 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+"""
+Edit by 'error모르겠다' Team
+Author : yoonkt200@gmail.com, joonable2@gmail.com
+"""
+
 from collections import defaultdict
 import fire
 import h5py
-import numpy as np
 import six
 from six.moves import zip, cPickle
 
@@ -26,19 +32,20 @@ def evaluate(predict_path, data_path, div, y_vocab_path):
     inv_y_vocab = {v: k for k, v in six.iteritems(y_vocab)}
     fin = open(predict_path, 'rb')
     hit, n = defaultdict(lambda: 0), defaultdict(lambda: 0)
-    print('loading ground-truth....')
-    CATE = np.argmax(h['y'], axis=1)
-    for p, y in zip(fin, CATE):
+    print('loading ground-truth...')
+    for p, y in zip(fin, h['y']):
+        if six.PY3:
+            p = p.decode('utf-8')
         pid, b, m, s, d = p.split('\t')
         b, m, s, d = list(map(int, [b, m, s, d]))
         gt = list(map(int, inv_y_vocab[y].split('>')))
-        for depth, _p, _g in zip(['b', 'm', 's', 'd'],
+        for depth, _predict, _real in zip(['b', 'm', 's', 'd'],
                                  [b, m, s, d],
                                  gt):
-            if _g == -1:
+            if _real == -1:
                 continue
             n[depth] = n.get(depth, 0) + 1
-            if _p == _g:
+            if _predict == _real:
                 hit[depth] = hit.get(depth, 0) + 1
     for d in ['b', 'm', 's', 'd']:
         if n[d] > 0:

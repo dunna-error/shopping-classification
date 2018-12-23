@@ -13,18 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+Edit by 'error모르겠다' Team
+Author : yoonkt200@gmail.com, joonable2@gmail.com
+"""
+
 import tensorflow as tf
 
 import keras
-from keras import layers
 from keras.models import Model
-from keras.models import Sequential
-from keras.layers.merge import dot
 from keras.layers import Dense, Input
-from keras.layers.core import Reshape
-
-from keras.layers.embeddings import Embedding
-from keras.layers.core import Dropout, Activation
 
 from misc import get_logger, Option
 opt = Option('./config.json')
