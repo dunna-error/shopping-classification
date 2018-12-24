@@ -139,6 +139,8 @@ class Data:
     valid_tag_dict_path = './data/valid_tag_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
     b2v_model_path = './data/b2v.model'
+    d2v_vector_path = '/workspace/dataset/doc2vec.model.docvecs.vectors_docs.npy'         #TODO 절대경로
+
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
@@ -261,6 +263,9 @@ class Data:
         else:
             return np.zeros(opt.b2v_feat_len)
 
+    def _get_d2v(self):
+        return np.load(self.d2v_vector_path)
+
     def _get_price_level(self, price):
         if price == -1:
             return 2
@@ -291,6 +296,7 @@ class Data:
         tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=False)
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
         b2v = self._get_b2v(str(raw_tag))
+        d2v = self._get_d2v()
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
