@@ -186,7 +186,7 @@ class Classifier():
         self.logger.info('# of dev samples: %s' % dev['y'].shape[0])
 
         checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=10)
+                                     save_best_only=True, mode='min', period=1)
 
         shopnet = ShopNet()
         model = shopnet.get_model(self.num_classes)
