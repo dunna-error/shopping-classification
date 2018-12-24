@@ -98,16 +98,16 @@ class Classifier():
         # 개발 테스트용 pid order
         pid_order = []
         pid_order.extend(data['pid'][::])
-        # dev 제출용 pid order
-        pid_order = []
-        for data_path in opt.dev_data_list:
-            h = h5py.File(data_path, 'r')['dev']
-            pid_order.extend(h['pid'][::])
-        # 최종 제출용 pid order
-        pid_order = []
-        for data_path in opt.test_data_list:
-            h = h5py.File(data_path, 'r')['test']
-            pid_order.extend(h['pid'][::])
+        # # dev 제출용 pid order
+        # pid_order = []
+        # for data_path in opt.dev_data_list:
+        #     h = h5py.File(data_path, 'r')['dev']
+        #     pid_order.extend(h['pid'][::])
+        # # 최종 제출용 pid order
+        # pid_order = []
+        # for data_path in opt.test_data_list:
+        #     h = h5py.File(data_path, 'r')['test']
+        #     pid_order.extend(h['pid'][::])
 
         # file write
         y2l = {i: s for s, i in six.iteritems(meta['y_vocab'])}
@@ -186,7 +186,7 @@ class Classifier():
         self.logger.info('# of dev samples: %s' % dev['y'].shape[0])
 
         checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=1)
+                                     save_best_only=True, mode='min', period=10)
 
         shopnet = ShopNet()
         model = shopnet.get_model(self.num_classes)

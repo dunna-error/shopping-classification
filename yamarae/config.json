@@ -8,6 +8,7 @@
         "../../dataset/dev.chunk.01"
     ],
     "test_data_list": [
+        "../../dataset/test.chunk.01",
         "../../dataset/test.chunk.02"
     ],
     "chunk_size": 20000,
