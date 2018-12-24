@@ -41,7 +41,6 @@ if six.PY2:
     cate1 = json.loads(open('./data/cate1.json').read())
 else:
     cate1 = json.loads(open('./data/cate1.json', 'rb').read().decode('utf-8'))
-DEV_DATA_LIST = ['../../dataset/dev.chunk.01']
 
 
 class Classifier():
@@ -96,8 +95,21 @@ class Classifier():
         return inv_cate1
 
     def write_prediction_result(self, data, pred_y, meta, out_path, readable):
+        # 개발 테스트용 pid order
         pid_order = []
         pid_order.extend(data['pid'][::])
+        # dev 제출용 pid order
+        pid_order = []
+        for data_path in opt.dev_data_list:
+            h = h5py.File(data_path, 'r')['dev']
+            pid_order.extend(h['pid'][::])
+        # 최종 제출용 pid order
+        pid_order = []
+        for data_path in opt.test_data_list:
+            h = h5py.File(data_path, 'r')['test']
+            pid_order.extend(h['pid'][::])
+
+        # file write
         y2l = {i: s for s, i in six.iteritems(meta['y_vocab'])}
         y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
         inv_cate1 = self.get_inverted_cate1(cate1)
