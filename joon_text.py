@@ -74,44 +74,43 @@ es = Elasticsearch()
 # reindex(es, conf.es_origin_index, conf.es_adjv_index)
 #
 #
-print(''' get_parsed_token ''')
-def get_mtermvectors(ids):
-    body = dict()
-    body['ids'] = ids
-    body['parameters'] = {"fields": ["product"]}
-    res = es.mtermvectors(index=conf.es_adjv_index, doc_type='_doc', body=body)['docs']
-    return res
-
-
-def sort_term_vectors(term_vector):
-    if not term_vector:
-        return None
-    term_dict = {}
-    for term, val in term_vector[0].items():
-        for pos_info in val['tokens']:
-            term_dict[pos_info['position']] = term
-    sorted_terms = sorted(term_dict.items())
-    sorted_terms = [tup[1] for tup in sorted_terms]
-    return sorted_terms
-
-
-df = pd.read_pickle(dataset_dir+'df_product_dataset.pkl')
-df.pid = df.pid.str.strip()
-df['term_vectors'] = None
-
-# df = dd.from_pandas(df, npartitions=50)
-count_list = list(range(0, len(df), 10000)) + [len(df)]
-sorted_term_vectors = list()
-sorted_term_vectors.append(es.search(index='nori_with_adjv', size=10000, scroll='1m',
-                                     filter_path=['hits.hits._source.sorted_term', 'hits.hits._source.pid']))
-scroll_id = sorted_term_vectors[0]['_scroll_id']
-
+#
+# print(''' get_parsed_token and upload sorted term vectors ''')
+# def get_mtermvectors(ids):
+#     body = dict()
+#     body['ids'] = ids
+#     body['parameters'] = {"fields": ["product"]}
+#     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
+#     res = es.mtermvectors(index=conf.es_nouns_index, doc_type='_doc', body=body)['docs']
+#     return res
+#
+#
+# def sort_term_vectors(term_vector):
+#     if not term_vector:
+#         return None
+#     term_dict = {}
+#     for term, val in term_vector[0].items():
+#         for pos_info in val['tokens']:
+#             term_dict[pos_info['position']] = term
+#     sorted_terms = sorted(term_dict.items())
+#     sorted_terms = [tup[1] for tup in sorted_terms]
+#     return sorted_terms
+#
+#
 # def gen_bulk_2(pid, sorted_term):
-#     _head = {"update": {"_id": pid, "_type": "_doc", "_index": conf.es_adjv_index, "retry_on_conflict": 3}}
+#     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
+#     _head = {"update": {"_id": pid, "_type": "_doc", "_index": conf.es_nouns_index, "retry_on_conflict": 3}}
 #     _body = dict()
 #     _body["doc_as_upsert"] = True
 #     _body["doc"] = {"sorted_term": sorted_term}
 #     return [json.dumps(_head), json.dumps(_body)]
+
+
+df = pd.read_pickle(dataset_dir+'df_product_dataset.pkl')
+df.pid = df.pid.str.strip()
+#
+# # df = dd.from_pandas(df, npartitions=50)
+# count_list = list(range(0, len(df), 10000)) + [len(df)]
 #
 # for idx in range(len(count_list)-1):
 #     print("terms vector : {}".format((idx+1)*10000))
@@ -132,34 +131,63 @@ scroll_id = sorted_term_vectors[0]['_scroll_id']
 #     body = [x for x in chain(*body)]
 #     body = "\n".join(body)
 #     es.bulk(body)
+#
 
-for idx in range(len(count_list)-1):
-    print("terms vector : {}".format((idx+1)*10000))
+print(''' get_sorted_term_vectors ''')
 
-    ids = df.loc[count_list[idx]:count_list[idx+1]].pid.tolist()
-    term_list = get_mtermvectors(ids)
-
-    ids = []
-    temp = []
-    for x in term_list:
-        ids.append(x['_id'])
-        if 'product' in x['term_vectors'].keys():
-            temp.append([x['term_vectors']['product']['terms']])
+sorted_term_vectors_dict = dict()
+#     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
+sorted_term_vectors = es.search(index=conf.es_nouns_index, size=10000, scroll='1m',
+                                filter_path=['hits.hits._source.sorted_term', 'hits.hits._source.pid', '_scroll_id'])
+scroll_id = sorted_term_vectors['_scroll_id']
+sorted_term_vectors = sorted_term_vectors['hits']['hits']
+for x in sorted_term_vectors:
+        if x['_source']['sorted_term']:
+            sorted_term_vectors_dict[x['_source']['pid']] = " ".join(x['_source']['sorted_term'])
         else:
-            temp.append(None)
+            sorted_term_vectors_dict[x['_source']['pid']] = None
 
-    temp = [sort_term_vectors(term_vector) for term_vector in temp]
-    body = [gen_bulk_2(pid, term_vector) for pid, term_vector in zip(ids, temp)]
-    body = [x for x in chain(*body)]
-    body = "\n".join(body)
-    es.bulk(body)
+for _ in range(len(df) // 10000):
+    print("sorted term : ", _ * 10000)
+    sorted_term_vectors = es.scroll(scroll_id=scroll_id, scroll='1m')['hits']['hits']
+    for x in sorted_term_vectors:
+        if x['_source']['sorted_term']:
+            sorted_term_vectors_dict[x['_source']['pid']] = " ".join(x['_source']['sorted_term'])
+        else:
+            sorted_term_vectors_dict[x['_source']['pid']] = None
+    del sorted_term_vectors
+
+print('merge dfs')
+df_temp = pd.DataFrame.from_dict(sorted_term_vectors_dict, orient='index')
+df_temp = df_temp.reset_index()
+df_temp.columns = ['pid', 'term_vector']
+df = df.merge(df_temp, on=['pid'])
+del df_temp
+
+df.to_pickle(dataset_dir+'df_sorted_product_dataset_nouns.pkl')
+#
+# for idx in range(len(count_list)-1):
+#     print("terms vector : {}".format((idx+1)*10000))
+#
+#     ids = df.loc[count_list[idx]:count_list[idx+1]].pid.tolist()
+#     term_list = get_mtermvectors(ids)
+#
+#     ids = []
+#     temp = []
+#     for x in term_list:
+#         ids.append(x['_id'])
+#         if 'product' in x['term_vectors'].keys():
+#             temp.append([x['term_vectors']['product']['terms']])
+#         else:
+#             temp.append(None)
+#
+#     temp = [sort_term_vectors(term_vector) for term_vector in temp]
+#     body = [gen_bulk_2(pid, term_vector) for pid, term_vector in zip(ids, temp)]
+#     body = [x for x in chain(*body)]
+#     body = "\n".join(body)
+#     es.bulk(body)
 
 
-#
-#
-#     # df = df.loc[df.pid.isin(ids), 'term_vectors'].assign(temp)
-#     # df['term_vectors'] = df['term_vectors'].mask(df['pid'].isin(ids), temp)
-#
 #
 # print(''' sort_term_vectors ''')
 #
@@ -216,4 +244,12 @@ step-2) 사전 보강
 >> [phase D] modelling
 step-1) word2vec
 step-2) 
+'''
+
+
+'''
+simil = np.ndarray(shape=(docs.shape[0], docs.shape[0]))
+for i in range(docs.shape[0]):
+    for j in range(docs.shape[0]):
+        simil[i][j] = scipy.spatial.distance.cosine(docs[i], docs[j])
 '''
