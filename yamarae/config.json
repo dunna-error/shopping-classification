@@ -1,4 +1,5 @@
 {
+    "dataset_path": "../../dataset/",
     "train_data_list": [
         "../../dataset/train.chunk.01",
         "../../dataset/train.chunk.02",
