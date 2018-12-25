@@ -136,7 +136,6 @@ class Data:
     y_vocab_path = './data/y_vocab.cPickle' if six.PY2 else './data/y_vocab.py3.cPickle'
     price_quantile_dict_path = './data/price_quantile_dict.pickle'
     time_aging_dict_path = './data/time_aging_dict.pickle'
-    valid_tag_dict_path = './data/valid_tag_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
     b2v_model_path = './data/b2v.model'
     d2v_vector_path = '/workspace/dataset/doc2vec.model.docvecs.vectors_docs.npy' #TODO 절대경로
@@ -146,7 +145,6 @@ class Data:
         self.logger = get_logger('data')
         self.price_quantile_dict = pickle.load(open(self.price_quantile_dict_path, 'rb'))
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
-        self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
         self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
 
