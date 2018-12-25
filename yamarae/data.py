@@ -30,6 +30,8 @@ import traceback
 from multiprocessing import Pool
 
 import gensim
+from gensim.models import Doc2Vec
+from elasticsearch5 import Elasticsearch
 import tqdm
 import fire
 import h5py
@@ -40,6 +42,8 @@ from six.moves import cPickle
 from misc import get_logger, Option
 opt = Option('./config.json')
 
+
+es = Elasticsearch(hosts=opt.es_host)       #TODO conf
 
 class Reader(object):
     def __init__(self, data_path_list, div, begin_offset, end_offset):
@@ -262,8 +266,6 @@ class Data:
         else:
             return np.zeros(opt.b2v_feat_len)
 
-    def _get_d2v(self):
-        return np.load(self.d2v_vector_path)
 
     def _get_price_level(self, price):
         if price == -1:
@@ -287,6 +289,19 @@ class Data:
         norm_aging = (aging - a_min) / (a_max - a_min)
         return norm_aging
 
+    def _get_d2v_model(self):
+        self.d2v_model = Doc2Vec.load('/workspace/dataset/doc2vec_test/reduced_doc2vec.model')       #TODO 절대경로
+
+    def _get_d2v(self, prd_terms):
+        self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)       #TODO config
+
+    def _get_prd_terms(self, pid):
+        # es.search(index=opt.index_name, body=)     #TODO conf
+        tokens = es.get(index="opt.index_name", id=pid)['_source']['sorted_term']
+        if not tokens:
+            tokens
+
+
     def parse_data(self, label, h, i, div):
         Y = self.y_vocab.get(label)
         if Y is None and self.div in ['dev', 'test']:
@@ -295,7 +310,13 @@ class Data:
         # tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=False)
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
         b2v = self._get_b2v(str(raw_tag))
-        d2v = self._get_d2v()
+
+        pid = h['pid'][i]
+        prd_terms = self._get_prd_terms(pid.decode('utf-8'))
+        d2v = self._get_d2v(prd_terms)
+
+        print(pid, prd_terms, d2v)
+
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
