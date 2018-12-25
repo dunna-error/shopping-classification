@@ -152,7 +152,8 @@ class Data:
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
         self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
-        self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
+        # self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
+        self.d2v_model = Doc2Vec.load('/workspace/dataset/doc2vec_test/reduced_doc2vec.model')       #TODO 절대경로
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -289,17 +290,16 @@ class Data:
         norm_aging = (aging - a_min) / (a_max - a_min)
         return norm_aging
 
-    def _get_d2v_model(self):
-        self.d2v_model = Doc2Vec.load('/workspace/dataset/doc2vec_test/reduced_doc2vec.model')       #TODO 절대경로
-
     def _get_d2v(self, prd_terms):
+        print(prd_terms)
         self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)       #TODO config
 
     def _get_prd_terms(self, pid):
         # es.search(index=opt.index_name, body=)     #TODO conf
-        tokens = es.get(index="opt.index_name", id=pid)['_source']['sorted_term']
-        if not tokens:
-            tokens
+        tokens = es.get(index=opt.es_index_name, id=pid)['_source']['sorted_term']
+        return tokens
+        # if not tokens:
+        #     tokens
 
 
     def parse_data(self, label, h, i, div):
@@ -309,8 +309,8 @@ class Data:
 
         # tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=False)
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
-        b2v = self._get_b2v(str(raw_tag))
-
+        # b2v = self._get_b2v(str(raw_tag))
+        b2v = None
         pid = h['pid'][i]
         prd_terms = self._get_prd_terms(pid.decode('utf-8'))
         d2v = self._get_d2v(prd_terms)
