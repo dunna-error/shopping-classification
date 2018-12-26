@@ -74,7 +74,7 @@ es = Elasticsearch()
 # reindex(es, conf.es_origin_index, conf.es_adjv_index)
 #
 #
-<<<<<<< HEAD
+# <<<<<<< HEAD
 print(''' get_parsed_token ''')
 def get_mtermvectors(ids):
     body = dict()
@@ -109,7 +109,7 @@ scroll_id = sorted_term_vectors[0]['_scroll_id']
 
 # def gen_bulk_2(pid, sorted_term):
 #     _head = {"update": {"_id": pid, "_type": "_doc", "_index": conf.es_adjv_index, "retry_on_conflict": 3}}
-=======
+# =======
 #
 # print(''' get_parsed_token and upload sorted term vectors ''')
 # def get_mtermvectors(ids):
@@ -136,21 +136,21 @@ scroll_id = sorted_term_vectors[0]['_scroll_id']
 # def gen_bulk_2(pid, sorted_term):
 #     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
 #     _head = {"update": {"_id": pid, "_type": "_doc", "_index": conf.es_nouns_index, "retry_on_conflict": 3}}
->>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
+# >>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
 #     _body = dict()
 #     _body["doc_as_upsert"] = True
 #     _body["doc"] = {"sorted_term": sorted_term}
 #     return [json.dumps(_head), json.dumps(_body)]
-<<<<<<< HEAD
-=======
-
+# <<<<<<< HEAD
+# =======
+#
 
 df = pd.read_pickle(dataset_dir+'df_product_dataset.pkl')
 df.pid = df.pid.str.strip()
 #
 # # df = dd.from_pandas(df, npartitions=50)
 # count_list = list(range(0, len(df), 10000)) + [len(df)]
->>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
+# >>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
 #
 # for idx in range(len(count_list)-1):
 #     print("terms vector : {}".format((idx+1)*10000))
@@ -171,7 +171,7 @@ df.pid = df.pid.str.strip()
 #     body = [x for x in chain(*body)]
 #     body = "\n".join(body)
 #     es.bulk(body)
-<<<<<<< HEAD
+# <<<<<<< HEAD
 
 for idx in range(len(count_list)-1):
     print("terms vector : {}".format((idx+1)*10000))
@@ -200,7 +200,7 @@ for idx in range(len(count_list)-1):
 #     # df = df.loc[df.pid.isin(ids), 'term_vectors'].assign(temp)
 #     # df['term_vectors'] = df['term_vectors'].mask(df['pid'].isin(ids), temp)
 #
-=======
+# =======
 #
 
 print(''' get_sorted_term_vectors ''')
@@ -258,7 +258,7 @@ df.to_pickle(dataset_dir+'df_sorted_product_dataset_nouns.pkl')
 #     es.bulk(body)
 
 
->>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
+# >>>>>>> e71c7c6c033a1ccae97048a4d304574adc1e24b1
 #
 # print(''' sort_term_vectors ''')
 #
