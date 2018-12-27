@@ -14,18 +14,19 @@ class Decoder:
         self.encoder_vector_size = opt.encoder_vector_size     #TODO
 
         self.checkpoint_dir = None
+        self.encoder_states_size = None
         self.n_hidden = None
         self.n_b_cate = None
         self.n_m_cate = None
         self.n_s_cate = None
         self.n_d_cate = None
 
-        self.encoder_inputs = tf.placeholder(tf.int32, shape=[None, 4], name="encoder_inputs")
+        self.checkpoint_prefix = os.path.join(self.checkpoint_dir, 'model')
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+
+        self.encoder_states = None      # TODO encoder_states
         self.decoder_inputs = tf.placeholder(tf.int32, shape=[None, 4], name="decoder_inputs")
         self.decoder_outputs = tf.placeholder(tf.int64, [None, 4], name="decoder_outputs")
-
-        self.checkpoint_prefix = os.path.join(self.checkpoint_dir, 'model')
-        self.global_step = tf.Variable(0, name = 'global_step', trainable = False)
 
         # self.dec_cell = tf.nn.rnn_cell.LSTMCell(self.n_hidden)
         # self.dec_cell.call(self.Wxbh, state=)
@@ -35,17 +36,28 @@ class Decoder:
         self.Whh = tf.Variable(tf.float32, [self.n_hidden, self.n_hidden], name="Whh")
         self.bh = tf.Variable(tf.float32, [self.n_hidden, self.n_hidden], name="bh")
 
-        self.Wxbh = tf.Variable(tf.float32, [self.n_b_cate, self.n_hidden], name="Wxbh")
+        self.Wxbh = tf.Variable(tf.float32, [self.encoder_states_size, self.n_hidden], name="Wxbh")
         self.Whyb = tf.Variable(tf.float32, [self.n_hidden, self.n_b_cate], name="Whyb")
-        self.byb = tf.Variable(tf.float32, [1, self.n_b_cate], name="Whyb")
-        self.ybHat = tf.sigmoid(tf.add(tf.matmul(X, W), B))  # 4x1
+        self.byb = tf.Variable(tf.float32, [1, self.n_b_cate], name="byb")
 
-        self.dec_cell = tf.add(tf.)
+        self.dec_cell = tf.nn.tanh(
+            tf.add(tf.add(tf.matmul(self.encoder_states, self.Wxbh), tf.matmul(self.encoder_states, self.Whh)), self.bh))       #TODO self.decoder_inputs[0]
+        self.logits_yb = tf.add(tf.matmul(self.dec_cell, self.Whyb), self.byb)
+        self.pred_yb = tf.argmax(self.logits_yb, axis=2)
+
+        self.crossent_yb = tf.nn.softmax_cross_entropy_with_logits_v2(self.logits_yb, labels=self.decoder_outputs[0]) #TODO self.decoder_outputs[0]
+        self.cost_yb = tf.reduce_mean(self.crossent_yb)
+
+        correct_pred_yb = tf.equal(self.pred_yb, self.decoder_outputs)
+        self.accuracy_yb = tf.reduce_mean(tf.cast(correct_pred_yb, "float"))
+        tf.summary.scalar('accuracy_yb', self.accuracy_yb)
+
+        # self.dec_cell = tf.argmax(self.logits_yb, axis=2)
 
 
-        self.Wxmh = tf.Variable(tf.float32, [self.n_m_cate, self.n_hidden], name="Wxmh")
-        self.Wxsh = tf.Variable(tf.float32, [self.n_s_cate, self.n_hidden], name="Wxsh")
-        self.Wxdh = tf.Variable(tf.float32, [self.n_d_cate, self.n_hidden], name="Wxdh")
+        self.Wxmh = tf.Variable(tf.float32, [self.n_b_cate, self.n_hidden], name="Wxmh")
+        self.Wxsh = tf.Variable(tf.float32, [self.n_m_cate, self.n_hidden], name="Wxsh")
+        self.Wxdh = tf.Variable(tf.float32, [self.n_s_cate, self.n_hidden], name="Wxdh")
 
         self.Whym = tf.Variable(tf.float32, [self.n_hidden, self.n_m_cate], name="Whym")
         self.bym = tf.Variable(tf.float32, [1, self.n_m_cate], name="Whym")
