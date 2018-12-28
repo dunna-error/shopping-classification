@@ -3,7 +3,13 @@
     "train_data_list": [
         "/workspace/dataset/train.chunk.01",
         "/workspace/dataset/train.chunk.02",
-        "/workspace/dataset/train.chunk.03"
+        "/workspace/dataset/train.chunk.03",
+        "/workspace/dataset/train.chunk.04",
+        "/workspace/dataset/train.chunk.05",
+        "/workspace/dataset/train.chunk.06",
+        "/workspace/dataset/train.chunk.07",
+        "/workspace/dataset/train.chunk.08",
+        "/workspace/dataset/train.chunk.09"
     ],
     "dev_data_list": [
         "../../dataset/dev.chunk.01"
@@ -37,5 +43,6 @@
     "batch_size": 1024,
     "lr": 1e-4,
     "es_host": null,
+    "es_index": "product_index",
     "es_index_name": "nori_nouns"
 }

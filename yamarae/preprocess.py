@@ -28,10 +28,34 @@ import numpy as np
 import h5py
 
 import gensim
-
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+import re
 from misc import get_logger, Option
-opt = Option('./config.json')
+import dask.dataframe as dd
+from elasticsearch5 import Elasticsearch
+import subprocess
+import json
+from itertools import chain
 
+opt = Option('./config.json')
+dataset_dir = '/workspace/dataset/preprocess_test/'  # TODO dataset dir
+
+en_stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours",
+                "yourself",
+                "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its",
+                "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom",
+                "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being",
+                "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and",
+                "but",
+                "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about",
+                "against", "between", "into", "through", "during", "before", "after", "above", "below",
+                "to",
+                "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then",
+                "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few",
+                "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so",
+                "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"]
+
+ko_stopwords = []
 
 class Preprocessor:
     def __init__(self):
@@ -278,14 +302,196 @@ class Preprocessor:
         b2v_model = self._train_b2v(train_df)
         b2v_model.save("./data/b2v.model")
 
+
+    def make_product_df(self):
+        dd_list = []
+        for fn in opt.train_data_list:      #TODO cover only train set , or also dev, test set
+            f = h5py.File(fn)
+            g = f.require_group('train')
+            temp = dd.concat([dd.from_array(g[k], chunksize=g[k].shape[0], columns=k)
+                              for k in g.keys() if k in ['pid', 'product']], axis=1)
+            dd_list.append(temp)
+
+        ddf = dd.concat(dd_list, interleave_partitions=True)
+        print(ddf.columns)
+        ddf.product = ddf.product.str.decode('utf-8')
+        ddf.pid = ddf.pid.str.decode('utf-8')
+
+        sr_product = pd.Series([v for k, v in ddf.product.iteritems()])
+        sr_pid = pd.Series([v for k, v in ddf.pid.iteritems()])
+        sr_pid = sr_pid.str.strip()
+        df = pd.concat([sr_pid, sr_product], axis=1)
+        df.columns = ['pid', 'product']
+        df.to_pickle(dataset_dir + 'df_product.pkl')
+
+
+    def _preprecess_product_by_char(self, sr_product):
+        noise_pattern = r'\[|\]|\/|\(|\)|-|\+|_|=|:|&|\d%|!|\?|\*|\^|\$|\@|\{|\}|\"|\'|\\'
+        sr_product = sr_product.apply(lambda x: re.sub(noise_pattern, repl=" ", string=x))
+        sr_product = sr_product.apply(lambda x: re.sub(r'( )+', repl=" ", string=x))
+        return sr_product
+
+
+    def _bulk_product_to_es(self, es, df):
+        print(''' upload data to es ''')
+        def _gen_bulk(row):
+            _head = {"update": {"_id": row.pid, "_type": "_doc", "_index": opt.es_index, "retry_on_conflict": 3}}       #TODO conf
+            _body = dict()
+            _body["doc_as_upsert"] = True
+            _body["doc"] = {"pid": row['pid'], "product": row['product']}
+            return [json.dumps(_head), json.dumps(_body)]
+
+        body = []
+        for idx, row in df.iterrows():
+            if (idx+1) % 100000 == 0:
+                print("bulk : {}".format(idx+1))
+            temp = _gen_bulk(row)
+            body.extend(temp)
+            if (idx+1) % 10000 == 0:
+                body = "\n".join(body)
+                es.bulk(body)
+                body = []
+        body = "\n".join(body)
+        es.bulk(body)
+
+
+    def _sort_term_vectors(self, es, df):
+        print(''' get_parsed_token and upload sorted term vectors ''')
+
+        def _get_mtermvectors(ids):
+            body = dict()
+            body['ids'] = ids
+            body['parameters'] = {"fields": ["product"]}
+            # TODO ES_INDEX : conf
+            res = es.mtermvectors(index=opt.es_index, doc_type='_doc', body=body)['docs']
+            return res
+
+        def _sort_terms(terms):
+
+            def _term_preprocessing(terms):
+                return [term for term in terms if (term not in en_stopwords + ko_stopwords) and (not term.isdigit())]
+
+            if not terms:
+                return None
+
+            term_dict = {}
+            for term, val in terms[0].items():
+                for pos_info in val['tokens']:
+                    term_dict[pos_info['position']] = term
+            sorted_terms = sorted(term_dict.items())
+            sorted_terms = [tup[1] for tup in sorted_terms if tup[1] not in en_stopwords + ko_stopwords]
+            sorted_terms = _term_preprocessing(sorted_terms)
+            return " ".join(sorted_terms)
+
+        def _gen_bulk_2(pid, sorted_term):
+            # TODO ES_INDEX : conf
+            _head = {"update": {"_id": pid, "_type": "_doc", "_index": opt.es_index, "retry_on_conflict": 3}}
+            _body = dict()
+            _body["doc_as_upsert"] = True
+            _body["doc"] = {"sorted_term": sorted_term}
+            return [json.dumps(_head), json.dumps(_body)]
+
+        count_list = list(range(0, len(df), 10000)) + [len(df)]
+
+        for idx in range(len(count_list) - 1):
+            print("terms vector : {}".format((idx + 1) * 10000))
+
+            ids = df.loc[count_list[idx]:count_list[idx + 1]].pid.tolist()
+            term_list = _get_mtermvectors(ids)
+            ids = []
+            temp = []
+            for x in term_list:
+                ids.append(x['_id'])
+                if 'product' in x['term_vectors'].keys():
+                    temp.append([x['term_vectors']['product']['terms']])
+                else:
+                    temp.append(None)
+            del term_list
+
+            temp = [_sort_terms(term_vector) for term_vector in temp]
+            body = [_gen_bulk_2(pid, term_vector) for pid, term_vector in zip(ids, temp)]
+            body = [x for x in chain(*body)]
+            body = "\n".join(body)
+            es.bulk(body)
+            del temp, body
+
+
+    def _get_term_vectors(self, es, len_df):
+        print(''' get_sorted_term_vectors ''')
+
+        term_vectors_dict = dict()
+        #     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
+        term_vectors = es.search(index=opt.es_index, size=10000, scroll='1m',
+                                        filter_path=['hits.hits._source.sorted_term', 'hits.hits._source.pid',
+                                                     '_scroll_id'])
+        scroll_id = term_vectors['_scroll_id']
+        term_vectors = term_vectors['hits']['hits']
+        for x in term_vectors:
+            if x['_source']['sorted_term']:
+                term_vectors_dict[x['_source']['pid']] = x['_source']['sorted_term']
+            else:
+                term_vectors_dict[x['_source']['pid']] = "UNKNOWN"
+
+        for _ in range(len_df // 10000):
+            print("sorted term : ", _ * 10000)
+            term_vectors = es.scroll(scroll_id=scroll_id, scroll='1m')['hits']['hits']
+            for x in term_vectors:
+                if x['_source']['sorted_term']:
+                    term_vectors_dict[x['_source']['pid']] = x['_source']['sorted_term']
+                else:
+                    term_vectors_dict[x['_source']['pid']] = "UNKNOWN"
+            del term_vectors
+        return term_vectors_dict
+
+
+    def make_parsed_product(self):
+        print(''' product 불러오기 ''')
+        df = pd.read_pickle(dataset_dir+'df_product.pkl')
+
+        print(''' char 단위 pre-processing ''')
+        df['product'] = self._preprecess_product_by_char(df['product'])
+
+        es = Elasticsearch()  # TODO conf
+        time.sleep(5)
+        print(dataset_dir+'put_es_index.sh')
+        subprocess.run(dataset_dir+'put_es_index.sh')
+        time.sleep(5)
+
+        self._bulk_product_to_es(es, df)
+        self._sort_term_vectors(es, df)
+        term_vectors_dict = self._get_term_vectors(es, len(df))
+
+        print('merge dfs')
+        df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
+        df_temp = df_temp.reset_index()
+        df_temp.columns = ['pid', 'term_vector']
+        df = df.merge(df_temp, on=['pid'])
+        del df_temp
+
+        df.to_pickle(dataset_dir + 'df_product_dataset.pkl')
+
     def make_d2v_model(self):
-        pass
+        df = pd.read_pickle(dataset_dir + 'df_product_dataset.pkl')
+        df.term_vector = [term_vector.split() for term_vector in df.term_vector.tolist()]
+
+        del df['product']
+
+        model = Doc2Vec(vector_size=100, window=3, total_words=50000, workers=8, dm=0, epochs=20)
+        documents = [TaggedDocument(doc, [i]) for i, doc in enumerate(df.term_vector.values)]
+        model.build_vocab(documents)
+        model.train(documents, epochs=model.epochs, total_examples=model.corpus_count)
+        del df
+
+        model.save(dataset_dir + 'doc2vec.model')
 
 
 if __name__ == '__main__':
     preprocessor = Preprocessor()
-    fire.Fire({'make_df': preprocessor.make_df,
-               'make_dict': preprocessor.make_dict,
-               'make_b2v_model': preprocessor.make_b2v_model
-               # 'make_d2v_model': preprocessor.make_d2v_model
-               })
+    fire.Fire({
+        # 'make_df': preprocessor.make_df,
+        # 'make_dict': preprocessor.make_dict,
+        # 'make_b2v_model': preprocessor.make_b2v_model,
+        'make_product_df': preprocessor.make_product_df,
+        'make_parsed_product': preprocessor.make_parsed_product,
+        'make_d2v_model': preprocessor.make_d2v_model
+    })
