@@ -27,8 +27,8 @@ from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 from six.moves import zip, cPickle
 
-from misc import get_logger, Option
-from network import TextOnly, top1_acc
+from joon.misc import get_logger, Option
+from joon.network import TextOnly, top1_acc
 
 opt = Option('./config.json')
 if six.PY2:

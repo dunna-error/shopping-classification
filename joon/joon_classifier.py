@@ -1,8 +1,8 @@
 import keras
-from keras.models import Sequential, Model
+from keras.models import Model
 from keras.layers import Dense, Embedding, Input, Reshape, Dropout, Activation, LSTMCell
 from keras.layers.merge import dot
-from misc import get_logger, Option
+from joon.misc import get_logger, Option
 import tensorflow as tf
 import os
 opt = Option('./config.json')

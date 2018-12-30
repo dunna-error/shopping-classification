@@ -24,7 +24,7 @@ from keras.layers.core import Reshape
 from keras.layers.embeddings import Embedding
 from keras.layers.core import Dropout, Activation
 
-from misc import get_logger, Option
+from joon.misc import get_logger, Option
 opt = Option('./config.json')
 
 

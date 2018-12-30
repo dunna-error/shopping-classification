@@ -29,7 +29,7 @@ import six
 from keras.utils.np_utils import to_categorical
 from six.moves import cPickle
 
-from misc import get_logger, Option
+from joon.misc import get_logger, Option
 opt = Option('./config.json')
 
 re_sc = re.compile('[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
