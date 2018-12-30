@@ -1,0 +1,48 @@
+{
+    "dataset_path": "../dataset/",
+    "train_data_list": [
+        "../dataset/train.chunk.01",
+        "../dataset/train.chunk.02",
+        "../dataset/train.chunk.03",
+        "../dataset/train.chunk.04",
+        "../dataset/train.chunk.05",
+        "../dataset/train.chunk.06",
+        "../dataset/train.chunk.07",
+        "../dataset/train.chunk.08",
+        "../dataset/train.chunk.09"
+    ],
+    "dev_data_list": [
+        "../dataset/dev.chunk.01"
+    ],
+    "test_data_list": [
+        "../dataset/test.chunk.01",
+        "../dataset/test.chunk.02"
+    ],
+    "chunk_size": 20000,
+    "db_chunk_size": 100000,
+    "num_workers": 3,
+    "img_feat_len": 2048,
+    "b2v_feat_len": 200,
+    "exception_word_list": [
+        "참조",
+        "없음",
+        "표기",
+        "별도",
+        "상세",
+        "자체",
+        "불명",
+        "미입력",
+        "공개불가"
+    ],
+    "exception_tag_list": [
+        "기타",
+        "",
+        "."
+    ],
+    "num_epochs": 30,
+    "batch_size": 1024,
+    "lr": 1e-4,
+    "es_host": "127.0.0.1",
+    "es_index": "product_index",
+    "es_index_name": "nori_nouns"
+}
