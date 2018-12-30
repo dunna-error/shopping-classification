@@ -29,7 +29,6 @@ import time
 import traceback
 from multiprocessing import Pool
 
-import gensim
 from gensim.models import Doc2Vec
 from elasticsearch5 import Elasticsearch
 import tqdm
@@ -38,6 +37,8 @@ import h5py
 import numpy as np
 import six
 from six.moves import cPickle
+import pandas as pd
+
 
 from misc import get_logger, Option
 opt = Option('./config.json')
@@ -154,6 +155,12 @@ class Data:
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
         # self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
         self.d2v_model = Doc2Vec.load('/workspace/dataset/doc2vec_test/reduced_doc2vec.model')       #TODO 절대경로
+        self.df_term_vector = pd.concat([
+            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_train_datset.pkl'),
+            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_dev_datset.pkl'),
+            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_test_datset.pkl')],
+            axis=0
+        )
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -294,13 +301,8 @@ class Data:
         print(prd_terms)
         self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)       #TODO config
 
-    def _get_prd_terms(self, pid):
-        # es.search(index=opt.index_name, body=)     #TODO conf
-        tokens = es.get(index=opt.es_index_name, id=pid)['_source']['sorted_term']
-        return tokens
-        # if not tokens:
-        #     tokens
-
+    def _get_term_vector(self, pid):
+        return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
 
     def parse_data(self, label, h, i, div):
         Y = self.y_vocab.get(label)
@@ -312,10 +314,10 @@ class Data:
         # b2v = self._get_b2v(str(raw_tag))
         b2v = None
         pid = h['pid'][i]
-        prd_terms = self._get_prd_terms(pid.decode('utf-8'))
-        d2v = self._get_d2v(prd_terms)
+        term_vector = self._get_term_vector(pid.decode('utf-8'))
+        d2v = self._get_d2v(term_vector)
 
-        print(pid, prd_terms, d2v)
+        # print(pid, prd_terms, d2v)
 
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
