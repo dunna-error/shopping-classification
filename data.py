@@ -143,6 +143,8 @@ class Data:
     time_aging_dict_path = './data/time_aging_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
     b2v_model_path = './data/b2v.model'
+    d2v_model_path = './data/reduced_doc2vec.model'
+    term_vector_dict_path = './data/term_vector_dict.pickle'
     tmp_chunk_tpl = './tmp/base.chunk.%s'
 
     def __init__(self):
@@ -151,13 +153,14 @@ class Data:
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
         self.b2v_model = Word2Vec.load(self.b2v_model_path)
-        self.d2v_model = Doc2Vec.load('./data/reduced_doc2vec.model')
-        self.df_term_vector = pd.concat([
-            pd.read_pickle('./data/df_product_train_dataset.pkl'),
-            pd.read_pickle('./data/df_product_dev_dataset.pkl'),
-            pd.read_pickle('./data/df_product_test_dataset.pkl')],
-            axis=0
-        )
+        self.d2v_model = Doc2Vec.load(self.d2v_model_path)
+        # self.df_term_vector = pd.concat([
+        #     pd.read_pickle('./data/df_product_train_dataset.pkl'),
+        #     pd.read_pickle('./data/df_product_dev_dataset.pkl'),
+        #     pd.read_pickle('./data/df_product_test_dataset.pkl')],
+        #     axis=0
+        # )
+        self.term_vector_dict = pickle.load(open(self.term_vector_dict_path, 'rb'))
 
     def load_y_vocab(self):
         self.y_vocab = cPickle.loads(open(self.y_vocab_path, 'rb').read())
@@ -285,7 +288,8 @@ class Data:
         return self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
 
     def _get_term_vector(self, pid):
-        return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
+        return self.term_vector_dict[pid]
+        # return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
 
     def parse_data(self, label, h, i, div):
         Y = self.y_vocab.get(label)
