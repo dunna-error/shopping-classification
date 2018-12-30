@@ -294,15 +294,13 @@ class Data:
 
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
         b2v = self._get_b2v(str(raw_tag))
-        # pid = h['pid'][i]
-        # term_vector = self._get_term_vector(pid.decode('utf-8'))
-        # d2v = self._get_d2v(term_vector)
+        term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
+        d2v = self._get_d2v(term_vector)
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
         aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
-        return Y, (b2v, img_feat, price_lev, aging)
-        # return Y, (b2v, img_feat, price_lev, aging, d2v)
+        return Y, (b2v, img_feat, price_lev, aging, d2v)
 
     def create_dataset(self, g, size):
         g.create_dataset('y', (size,), chunks=True, dtype=np.int32)
@@ -310,7 +308,7 @@ class Data:
         g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.float32)
         g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32)
         g.create_dataset('aging', (size,), chunks=True, dtype=np.float32)
-        # g.create_dataset('d2v', (size, opt.d2v_feat_len), chunks=True, dtype=np.float32)
+        g.create_dataset('d2v', (size, opt.d2v_feat_len), chunks=True, dtype=np.float32)
         g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
     def init_chunk(self, chunk_size):
@@ -320,7 +318,7 @@ class Data:
         chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_feat_len), dtype=np.float32)
         chunk['price_lev'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['aging'] = np.zeros(shape=chunk_size, dtype=np.float32)
-        # chunk['d2v'] = np.zeros(shape=(chunk_size, opt.d2v_feat_len), dtype=np.float32)
+        chunk['d2v'] = np.zeros(shape=(chunk_size, opt.d2v_feat_len), dtype=np.float32)
         chunk['pid'] = []
         chunk['num'] = 0
         return chunk
@@ -332,7 +330,7 @@ class Data:
         dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
         dataset['price_lev'][offset:offset + num] = chunk['price_lev'][:num]
         dataset['aging'][offset:offset + num] = chunk['aging'][:num]
-        # dataset['d2v'][offset:offset + num, :] = chunk['d2v'][:num]
+        dataset['d2v'][offset:offset + num, :] = chunk['d2v'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
 
@@ -405,8 +403,7 @@ class Data:
             for data_idx, (pid, y, x) in data:
                 if y is None:
                     continue
-                b2v, img_feat, price_lev, aging = x
-                # b2v, img_feat, price_lev, aging, d2v = x
+                b2v, img_feat, price_lev, aging, d2v = x
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -419,7 +416,7 @@ class Data:
                 c['img_feat'][idx] = img_feat
                 c['price_lev'][idx] = price_lev
                 c['aging'][idx] = aging
-                # c['d2v'][idx] = d2v
+                c['d2v'][idx] = d2v
                 c['num'] += 1
                 if not is_train:
                     c['pid'].append(np.string_(pid))
