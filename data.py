@@ -300,10 +300,10 @@ class Data:
         b2v = self._get_b2v(str(raw_tag))
         term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
         d2v = 0
-        if term_vector is None:
-            d2v = np.zeros((opt.d2v_feat_len,))
-        else:
+        try:
             d2v = self._get_d2v(term_vector)
+        except:
+            d2v = np.zeros((opt.d2v_feat_len,))
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
