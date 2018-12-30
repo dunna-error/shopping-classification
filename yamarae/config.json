@@ -12,11 +12,11 @@
         "/workspace/dataset/train.chunk.09"
     ],
     "dev_data_list": [
-        "../../dataset/dev.chunk.01"
+        "/workspace/dataset/dev.chunk.01"
     ],
     "test_data_list": [
-        "../../dataset/test.chunk.01",
-        "../../dataset/test.chunk.02"
+        "/workspace/dataset/test.chunk.01",
+        "/workspace/dataset/test.chunk.02"
     ],
     "chunk_size": 20000,
     "db_chunk_size": 100000,
