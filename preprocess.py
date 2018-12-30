@@ -303,6 +303,7 @@ class Preprocessor:
         b2v_model.save("./data/b2v.model")
 
 
+    # will be dispatched
     def make_product_df(self):
         dd_list = []
         for fn in opt.train_data_list:      #TODO cover only train set , or also dev, test set
@@ -323,6 +324,8 @@ class Preprocessor:
         df = pd.concat([sr_pid, sr_product], axis=1)
         df.columns = ['pid', 'product']
         df.to_pickle(dataset_dir + 'df_product.pkl')
+
+
 
 
     def _preprecess_product_by_char(self, sr_product):
@@ -427,7 +430,7 @@ class Preprocessor:
         scroll_id = term_vectors['_scroll_id']
         term_vectors = term_vectors['hits']['hits']
         for x in term_vectors:
-            if x['_source']['sorted_term']:
+            if 'sorted_term' in x['_source'].keys():
                 term_vectors_dict[x['_source']['pid']] = x['_source']['sorted_term']
             else:
                 term_vectors_dict[x['_source']['pid']] = "UNKNOWN"
@@ -436,12 +439,41 @@ class Preprocessor:
             print("sorted term : ", _ * 10000)
             term_vectors = es.scroll(scroll_id=scroll_id, scroll='1m')['hits']['hits']
             for x in term_vectors:
-                if x['_source']['sorted_term']:
+                if 'sorted_term' in x['_source'].keys():
                     term_vectors_dict[x['_source']['pid']] = x['_source']['sorted_term']
                 else:
                     term_vectors_dict[x['_source']['pid']] = "UNKNOWN"
             del term_vectors
         return term_vectors_dict
+
+    def _get_term_vectors_v2(self, es, df):
+        print(''' get_sorted_term_vectors ''')
+
+        term_vectors_dict = dict()
+        #     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
+
+        count_list = list(range(0, len(df), 5000)) + [len(df)]
+
+
+        for idx in range(len(count_list) - 1):
+            print("terms vector : {}".format((idx+1) * 5000))
+
+            ids = df.loc[count_list[idx]:count_list[idx+1]].pid.tolist()
+
+            body = { "query":{ "ids": { "type":"_doc", "values":ids } } }
+
+            term_vectors = es.search(index=opt.es_index, size=len(ids), body=body,
+                                     filter_path=['hits.hits._source.sorted_term', 'hits.hits._source.pid'])
+            # scroll_id = term_vectors['_scroll_id']
+            term_vectors = term_vectors['hits']['hits']
+            for x in term_vectors:
+                if 'sorted_term' in x['_source'].keys():
+                    term_vectors_dict[x['_source']['pid']] = x['_source']['sorted_term']
+                else:
+                    term_vectors_dict[x['_source']['pid']] = "UNKNOWN"
+            del term_vectors
+        return term_vectors_dict
+
 
     def _make_es(self):
         es = Elasticsearch()  # TODO conf
@@ -451,20 +483,46 @@ class Preprocessor:
         time.sleep(5)
         return es
 
+
+    def make_parsed_product_temp(self):
+        es = Elasticsearch()
+
+        for data_name in ['dev', 'test']:
+            print(data_name)
+            df = pd.read_pickle(dataset_dir+'df_product_'+data_name+'.pkl')
+
+            print(''' char 단위 pre-processing ''')
+            df['product'] = self._preprecess_product_by_char(df['product'])
+
+            # self._bulk_product_to_es(es, df)
+            # self._sort_term_vectors(es, df)
+            term_vectors_dict = self._get_term_vectors_v2(es, df)
+
+            print('merge dfs')
+            df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
+            df_temp = df_temp.reset_index()
+            df_temp.columns = ['pid', 'term_vector']
+            df = df.merge(df_temp, on=['pid'])
+            del df_temp
+
+            df.to_pickle(dataset_dir+'df_product_'+data_name+'_dataset.pkl')
+            del df
+
     def make_parsed_product(self):
         es = self._make_es()
 
         for data_name in ['train', 'dev', 'test']:
+
             df =  self._get_df(data_name)[['pid', 'product']]
-            df.product = df.product.str.decode('utf-8')
-            df.pid = df.pid.str.decode('utf-8')
+            df['product'] = df['product'].str.decode('utf-8')
+            df['pid'] = df['pid'].str.decode('utf-8')
 
             print(''' char 단위 pre-processing ''')
             df['product'] = self._preprecess_product_by_char(df['product'])
 
             self._bulk_product_to_es(es, df)
             self._sort_term_vectors(es, df)
-            term_vectors_dict = self._get_term_vectors(es, len(df))
+            term_vectors_dict = self._get_term_vectors_v2(es, df)
 
             print('merge dfs')
             df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
@@ -494,10 +552,10 @@ class Preprocessor:
 if __name__ == '__main__':
     preprocessor = Preprocessor()
     fire.Fire({
-        # 'make_df': preprocessor.make_df,
-        # 'make_dict': preprocessor.make_dict,
-        # 'make_b2v_model': preprocessor.make_b2v_model,
-        'make_product_df': preprocessor.make_product_df,
+        'make_df': preprocessor.make_df,
+        'make_dict': preprocessor.make_dict,
+        'make_b2v_model': preprocessor.make_b2v_model,
+        'make_parsed_product_temp': preprocessor.make_parsed_product_temp,
         'make_parsed_product': preprocessor.make_parsed_product,
         'make_d2v_model': preprocessor.make_d2v_model
     })
