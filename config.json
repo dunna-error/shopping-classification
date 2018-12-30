@@ -1,7 +1,15 @@
 {
     "dataset_path": "../dataset/",
     "train_data_list": [
-        "../dataset/train.chunk.01"
+        "../dataset/train.chunk.01",
+        "../dataset/train.chunk.02",
+        "../dataset/train.chunk.03",
+        "../dataset/train.chunk.04",
+        "../dataset/train.chunk.05",
+        "../dataset/train.chunk.06",
+        "../dataset/train.chunk.07",
+        "../dataset/train.chunk.08",
+        "../dataset/train.chunk.09"
     ],
     "dev_data_list": [
         "../dataset/dev.chunk.01"

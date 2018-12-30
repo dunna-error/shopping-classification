@@ -237,33 +237,21 @@ class Data:
             else:
                 return True
 
-    def _get_encoded_tag(self, key):
-        if key in self.valid_tag_dict:
-            return self.valid_tag_dict[key]
-        else:
-            return self.valid_tag_dict["-1"]
-
     def _get_encoded_raw_tag(self, key):
         if key in self.b2v_dict:
             return self.b2v_dict[key]
         else:
             return self.b2v_dict["-1"]
 
-    def _get_trimed_tag(self, brand, maker, raw_flag=False):
+    def _get_trimed_tag(self, brand, maker):
         brand_valid = self._check_valid_keyword(brand)
         maker_valid = self._check_valid_keyword(maker)
         if brand_valid:
-            if raw_flag:
-                return self._get_encoded_raw_tag(brand)
-            else:
-                return self._get_encoded_tag(brand)
+            return self._get_encoded_raw_tag(brand)
         else:
             if maker_valid:
-                if raw_flag:
-                    return self._get_encoded_raw_tag(brand)
-                else:
-                    return self._get_encoded_tag(brand)
-        return self.valid_tag_dict["-1"]
+                return self._get_encoded_raw_tag(brand)
+        return self.b2v_dict["-1"]
 
     def _get_b2v(self, tag):
         if tag in self.b2v_model.wv.vocab:
@@ -304,7 +292,7 @@ class Data:
         if Y is None and self.div in ['dev', 'test']:
             Y = -1
 
-        raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
+        raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
         b2v = self._get_b2v(str(raw_tag))
         pid = h['pid'][i]
         term_vector = self._get_term_vector(pid.decode('utf-8'))
