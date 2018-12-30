@@ -153,9 +153,9 @@ class Data:
         self.b2v_model = Word2Vec.load(self.b2v_model_path)
         self.d2v_model = Doc2Vec.load('./data/reduced_doc2vec.model')
         self.df_term_vector = pd.concat([
-            pd.read_pickle('./data/df_product_train_datset.pkl'),
-            pd.read_pickle('./data/df_product_dev_datset.pkl'),
-            pd.read_pickle('./data/df_product_test_datset.pkl')],
+            pd.read_pickle('./data/df_product_train_dataset.pkl'),
+            pd.read_pickle('./data/df_product_dev_dataset.pkl'),
+            pd.read_pickle('./data/df_product_test_dataset.pkl')],
             axis=0
         )
 
