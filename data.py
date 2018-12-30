@@ -297,7 +297,6 @@ class Data:
         pid = h['pid'][i]
         term_vector = self._get_term_vector(pid.decode('utf-8'))
         d2v = self._get_d2v(term_vector)
-        print(d2v)
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
