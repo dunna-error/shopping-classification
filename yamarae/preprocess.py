@@ -443,35 +443,41 @@ class Preprocessor:
             del term_vectors
         return term_vectors_dict
 
-
-    def make_parsed_product(self):
-        print(''' product 불러오기 ''')
-        df = pd.read_pickle(dataset_dir+'df_product.pkl')
-
-        print(''' char 단위 pre-processing ''')
-        df['product'] = self._preprecess_product_by_char(df['product'])
-
+    def _make_es(self):
         es = Elasticsearch()  # TODO conf
         time.sleep(5)
         print(dataset_dir+'put_es_index.sh')
         subprocess.run(dataset_dir+'put_es_index.sh')
         time.sleep(5)
+        return es
 
-        self._bulk_product_to_es(es, df)
-        self._sort_term_vectors(es, df)
-        term_vectors_dict = self._get_term_vectors(es, len(df))
+    def make_parsed_product(self):
+        es = self._make_es()
 
-        print('merge dfs')
-        df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
-        df_temp = df_temp.reset_index()
-        df_temp.columns = ['pid', 'term_vector']
-        df = df.merge(df_temp, on=['pid'])
-        del df_temp
+        for data_name in ['train', 'dev', 'test']:
+            df =  self._get_df(data_name)[['pid', 'product']]
+            df.product = df.product.str.decode('utf-8')
+            df.pid = df.pid.str.decode('utf-8')
 
-        df.to_pickle(dataset_dir + 'df_product_dataset.pkl')
+            print(''' char 단위 pre-processing ''')
+            df['product'] = self._preprecess_product_by_char(df['product'])
+
+            self._bulk_product_to_es(es, df)
+            self._sort_term_vectors(es, df)
+            term_vectors_dict = self._get_term_vectors(es, len(df))
+
+            print('merge dfs')
+            df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
+            df_temp = df_temp.reset_index()
+            df_temp.columns = ['pid', 'term_vector']
+            df = df.merge(df_temp, on=['pid'])
+            del df_temp
+
+            df.to_pickle(dataset_dir + 'df_product_'+ data_name +'_dataset.pkl')
+            del df
 
     def make_d2v_model(self):
-        df = pd.read_pickle(dataset_dir + 'df_product_dataset.pkl')
+        df = pd.read_pickle(dataset_dir + 'df_product_train_dataset.pkl')
         df.term_vector = [term_vector.split() for term_vector in df.term_vector.tolist()]
 
         del df['product']
