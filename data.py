@@ -288,7 +288,7 @@ class Data:
         return self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
 
     def _get_term_vector(self, pid):
-        return self.term_vector_dict[int(pid)]
+        return self.term_vector_dict[pid]
         # return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
 
     def parse_data(self, label, h, i, div):
