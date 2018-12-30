@@ -20,7 +20,7 @@
     ],
     "chunk_size": 20000,
     "db_chunk_size": 100000,
-    "num_workers": 5,
+    "num_workers": 3,
     "img_feat_len": 2048,
     "b2v_feat_len": 200,
     "exception_word_list": [
