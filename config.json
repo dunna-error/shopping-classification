@@ -37,6 +37,7 @@
     "es_host": "127.0.0.1",
     "es_index": "product_index",
     "d2v_epochs": 15,
+    "d2v_feat_len": 100,
     "en_stopwords" : ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
                 "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its",
                 "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom",

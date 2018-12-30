@@ -29,7 +29,7 @@ import time
 import traceback
 from multiprocessing import Pool
 
-from gensim.models import Doc2Vec
+from gensim.models import Doc2Vec, Word2Vec
 from elasticsearch5 import Elasticsearch
 import tqdm
 import fire
@@ -144,7 +144,7 @@ class Data:
     valid_tag_dict_path = './data/valid_tag_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
     b2v_model_path = './data/b2v.model'
-    tmp_chunk_tpl = 'tmp/base.chunk.%s'
+    tmp_chunk_tpl = './tmp/base.chunk.%s'
 
     def __init__(self):
         self.logger = get_logger('data')
@@ -152,7 +152,7 @@ class Data:
         self.time_aging_dict = pickle.load(open(self.time_aging_dict_path, 'rb'))
         self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
-        # self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
+        self.b2v_model = Word2Vec.load(self.b2v_model_path)
         self.d2v_model = Doc2Vec.load('./data/reduced_doc2vec.model')
         self.df_term_vector = pd.concat([
             pd.read_pickle('./data/df_product_train_datset.pkl'),
@@ -273,7 +273,6 @@ class Data:
         else:
             return np.zeros(opt.b2v_feat_len)
 
-
     def _get_price_level(self, price):
         if price == -1:
             return 2
@@ -297,8 +296,7 @@ class Data:
         return norm_aging
 
     def _get_d2v(self, prd_terms):
-        print(prd_terms)
-        self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
+        return self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
 
     def _get_term_vector(self, pid):
         return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
@@ -308,43 +306,34 @@ class Data:
         if Y is None and self.div in ['dev', 'test']:
             Y = -1
 
-        # tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=False)
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'), raw_flag=True)
-        # b2v = self._get_b2v(str(raw_tag))
-        b2v = None
+        b2v = self._get_b2v(str(raw_tag))
         pid = h['pid'][i]
         term_vector = self._get_term_vector(pid.decode('utf-8'))
         d2v = self._get_d2v(term_vector)
-
-        # print(pid, prd_terms, d2v)
-
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
         aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
-        # word_feat = h['']
-        # return Y, (tag, b2v, img_feat, price_lev, aging, word_feat)
-        return Y, (b2v, img_feat, price_lev, aging)
+        return Y, (b2v, img_feat, price_lev, aging, d2v)
 
     def create_dataset(self, g, size):
-        g.create_dataset('y', (size,), chunks=True, dtype=np.int32) # encoded vocab
-        # g.create_dataset('tag', (size,), chunks=True, dtype=np.int32) # 1 ~ 15000
-        g.create_dataset('b2v', (size, opt.b2v_feat_len), chunks=True, dtype=np.float32) # [0, 0.8, ... 0.9, 0.1]
-        g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.float32) # [0, 0.8, ... 0.9, 0.1]
-        g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32) # 1,2,3
+        g.create_dataset('y', (size,), chunks=True, dtype=np.int32)
+        g.create_dataset('b2v', (size, opt.b2v_feat_len), chunks=True, dtype=np.float32)
+        g.create_dataset('img_feat', (size, opt.img_feat_len), chunks=True, dtype=np.float32)
+        g.create_dataset('price_lev', (size,), chunks=True, dtype=np.int32)
         g.create_dataset('aging', (size,), chunks=True, dtype=np.float32)
-        # g.create_dataset('word_feat')
+        g.create_dataset('d2v', (size, opt.d2v_feat_len), chunks=True, dtype=np.float32)
         g.create_dataset('pid', (size,), chunks=True, dtype='S12')
 
     def init_chunk(self, chunk_size):
         chunk = {}
         chunk['y'] = np.zeros(shape=chunk_size, dtype=np.int32)
-        # chunk['tag'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['b2v'] = np.zeros(shape=(chunk_size, opt.b2v_feat_len), dtype=np.float32)
         chunk['img_feat'] = np.zeros(shape=(chunk_size, opt.img_feat_len), dtype=np.float32)
         chunk['price_lev'] = np.zeros(shape=chunk_size, dtype=np.int32)
         chunk['aging'] = np.zeros(shape=chunk_size, dtype=np.float32)
-        # chunk['word_feat'] = np.zeros()
+        chunk['d2v'] = np.zeros(shape=(chunk_size, opt.d2v_feat_len), dtype=np.float32)
         chunk['pid'] = []
         chunk['num'] = 0
         return chunk
@@ -352,12 +341,11 @@ class Data:
     def copy_chunk(self, dataset, chunk, offset, with_pid_field=False):
         num = chunk['num']
         dataset['y'][offset:offset + num] = chunk['y'][:num]
-        # dataset['tag'][offset:offset + num] = chunk['tag'][:num]
         dataset['b2v'][offset:offset + num, :] = chunk['b2v'][:num]
         dataset['img_feat'][offset:offset + num, :] = chunk['img_feat'][:num]
         dataset['price_lev'][offset:offset + num] = chunk['price_lev'][:num]
         dataset['aging'][offset:offset + num] = chunk['aging'][:num]
-        # dataset['word_feat'][offset:offset + num] = chunk['word_feat'][:num]
+        dataset['d2v'][offset:offset + num, :] = chunk['d2v'][:num]
         if with_pid_field:
             dataset['pid'][offset:offset + num] = chunk['pid'][:num]
 
@@ -430,7 +418,7 @@ class Data:
             for data_idx, (pid, y, x) in data:
                 if y is None:
                     continue
-                b2v, img_feat, price_lev, aging = x
+                b2v, img_feat, price_lev, aging, d2v = x
                 is_train = train_indices[sample_idx + data_idx]
                 if all_dev:
                     is_train = False
@@ -439,12 +427,11 @@ class Data:
                 c = chunk['train'] if is_train else chunk['dev']
                 idx = c['num']
                 c['y'][idx] = y
-                # c['tag'][idx] = tag
                 c['b2v'][idx] = b2v
                 c['img_feat'][idx] = img_feat
                 c['price_lev'][idx] = price_lev
                 c['aging'][idx] = aging
-                # c['word_feat'][idx] = word_feat
+                c['d2v'][idx] = d2v
                 c['num'] += 1
                 if not is_train:
                     c['pid'].append(np.string_(pid))
