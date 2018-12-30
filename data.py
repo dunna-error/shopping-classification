@@ -37,7 +37,7 @@ import h5py
 import numpy as np
 import six
 from six.moves import cPickle
-import pandas as pd
+# import pandas as pd
 
 
 from misc import get_logger, Option
@@ -288,7 +288,7 @@ class Data:
         return self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
 
     def _get_term_vector(self, pid):
-        return self.term_vector_dict[pid]
+        return self.term_vector_dict[int(pid)]
         # return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']
 
     def parse_data(self, label, h, i, div):
@@ -298,12 +298,8 @@ class Data:
 
         raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
         b2v = self._get_b2v(str(raw_tag))
-
-        now = time.time()
         term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
         d2v = self._get_d2v(term_vector)
-        self.logger.info("spend %d second" % int(time.time() - now))
-
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
