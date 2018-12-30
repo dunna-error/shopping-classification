@@ -44,7 +44,7 @@ from misc import get_logger, Option
 opt = Option('./config.json')
 
 
-es = Elasticsearch(hosts=opt.es_host)       #TODO conf
+es = Elasticsearch(hosts=opt.es_host)
 
 class Reader(object):
     def __init__(self, data_path_list, div, begin_offset, end_offset):
@@ -144,7 +144,6 @@ class Data:
     valid_tag_dict_path = './data/valid_tag_dict.pickle'
     b2v_dict_path = './data/b2v_dict.pickle'
     b2v_model_path = './data/b2v.model'
-    d2v_vector_path = '/workspace/dataset/doc2vec.model.docvecs.vectors_docs.npy' #TODO 절대경로
     tmp_chunk_tpl = 'tmp/base.chunk.%s'
 
     def __init__(self):
@@ -154,11 +153,11 @@ class Data:
         self.valid_tag_dict = pickle.load(open(self.valid_tag_dict_path, 'rb'))
         self.b2v_dict = pickle.load(open(self.b2v_dict_path, 'rb'))
         # self.b2v_model = gensim.models.Word2Vec.load(self.b2v_model_path)
-        self.d2v_model = Doc2Vec.load('/workspace/dataset/doc2vec_test/reduced_doc2vec.model')       #TODO 절대경로
+        self.d2v_model = Doc2Vec.load('./data/reduced_doc2vec.model')
         self.df_term_vector = pd.concat([
-            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_train_datset.pkl'),
-            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_dev_datset.pkl'),
-            pd.read_pickle('/workspace/dataset/preprocess_test/df_product_test_datset.pkl')],
+            pd.read_pickle('./data/df_product_train_datset.pkl'),
+            pd.read_pickle('./data/df_product_dev_datset.pkl'),
+            pd.read_pickle('./data/df_product_test_datset.pkl')],
             axis=0
         )
 
@@ -299,7 +298,7 @@ class Data:
 
     def _get_d2v(self, prd_terms):
         print(prd_terms)
-        self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)       #TODO config
+        self.d2v_model.infer_vector(prd_terms, epochs=opt.d2v_epochs)
 
     def _get_term_vector(self, pid):
         return self.df_term_vector.loc[self.df_term_vector.pid == pid, 'term_vector']

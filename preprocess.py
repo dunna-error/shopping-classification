@@ -38,24 +38,9 @@ import json
 from itertools import chain
 
 opt = Option('./config.json')
-dataset_dir = '/workspace/dataset/preprocess_test/'  # TODO dataset dir
+data_dir = './data/'
 
-en_stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours",
-                "yourself",
-                "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its",
-                "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom",
-                "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being",
-                "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and",
-                "but",
-                "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about",
-                "against", "between", "into", "through", "during", "before", "after", "above", "below",
-                "to",
-                "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then",
-                "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few",
-                "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so",
-                "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"]
 
-ko_stopwords = []
 
 class Preprocessor:
     def __init__(self):
@@ -70,6 +55,7 @@ class Preprocessor:
         self.test_df_columns = ['brand', 'maker', 'model',
                                 'product', 'price', 'updttm', 'pid']
         self.data_path_list = opt.train_data_list
+        self.stop_words = opt.en_stopwords + opt.ko_stopwords
 
     def _make_df(self, hdf5_data, data_name):
         idx = len(hdf5_data[data_name]['pid'])
@@ -286,11 +272,11 @@ class Preprocessor:
         b2v_dict = self._get_b2v_dict(train_df)
 
         # save dicts
-        with open('./data/price_quantile_dict.pickle', 'wb') as f:
+        with open(data_dir+'price_quantile_dict.pickle', 'wb') as f:
             pickle.dump(price_quantile_dict, f, pickle.HIGHEST_PROTOCOL)
-        with open('./data/time_aging_dict.pickle', 'wb') as f:
+        with open(data_dir+'time_aging_dict.pickle', 'wb') as f:
             pickle.dump(time_aging_dict, f, pickle.HIGHEST_PROTOCOL)
-        with open('./data/b2v_dict.pickle', 'wb') as f:
+        with open(data_dir+'b2v_dict.pickle', 'wb') as f:
             pickle.dump(b2v_dict, f, pickle.HIGHEST_PROTOCOL)
         self.logger.info('save dict files complete')
 
@@ -298,15 +284,14 @@ class Preprocessor:
         self.logger.info('start make brand2vect model.')
         self.logger.info('load train dataframe.')
         train_df = self._get_df("train")
-        self.b2v_dict = pickle.load(open('./data/b2v_dict.pickle', 'rb'))
+        self.b2v_dict = pickle.load(open(data_dir+'b2v_dict.pickle', 'rb'))
         b2v_model = self._train_b2v(train_df)
-        b2v_model.save("./data/b2v.model")
-
+        b2v_model.save(data_dir+"b2v.model")
 
     # will be dispatched
     def make_product_df(self):
         dd_list = []
-        for fn in opt.train_data_list:      #TODO cover only train set , or also dev, test set
+        for fn in opt.train_data_list:
             f = h5py.File(fn)
             g = f.require_group('train')
             temp = dd.concat([dd.from_array(g[k], chunksize=g[k].shape[0], columns=k)
@@ -323,7 +308,7 @@ class Preprocessor:
         sr_pid = sr_pid.str.strip()
         df = pd.concat([sr_pid, sr_product], axis=1)
         df.columns = ['pid', 'product']
-        df.to_pickle(dataset_dir + 'df_product.pkl')
+        df.to_pickle(data_dir + 'df_product.pkl')
 
 
 
@@ -338,7 +323,7 @@ class Preprocessor:
     def _bulk_product_to_es(self, es, df):
         print(''' upload data to es ''')
         def _gen_bulk(row):
-            _head = {"update": {"_id": row.pid, "_type": "_doc", "_index": opt.es_index, "retry_on_conflict": 3}}       #TODO conf
+            _head = {"update": {"_id": row.pid, "_type": "_doc", "_index": opt.es_index, "retry_on_conflict": 3}}
             _body = dict()
             _body["doc_as_upsert"] = True
             _body["doc"] = {"pid": row['pid'], "product": row['product']}
@@ -365,14 +350,13 @@ class Preprocessor:
             body = dict()
             body['ids'] = ids
             body['parameters'] = {"fields": ["product"]}
-            # TODO ES_INDEX : conf
             res = es.mtermvectors(index=opt.es_index, doc_type='_doc', body=body)['docs']
             return res
 
         def _sort_terms(terms):
 
             def _term_preprocessing(terms):
-                return [term for term in terms if (term not in en_stopwords + ko_stopwords) and (not term.isdigit())]
+                return [term for term in terms if (term not in self.stop_words) and (not term.isdigit())]
 
             if not terms:
                 return None
@@ -382,12 +366,11 @@ class Preprocessor:
                 for pos_info in val['tokens']:
                     term_dict[pos_info['position']] = term
             sorted_terms = sorted(term_dict.items())
-            sorted_terms = [tup[1] for tup in sorted_terms if tup[1] not in en_stopwords + ko_stopwords]
+            sorted_terms = [tup[1] for tup in sorted_terms if tup[1] not in self.stop_words]
             sorted_terms = _term_preprocessing(sorted_terms)
             return " ".join(sorted_terms)
 
         def _gen_bulk_2(pid, sorted_term):
-            # TODO ES_INDEX : conf
             _head = {"update": {"_id": pid, "_type": "_doc", "_index": opt.es_index, "retry_on_conflict": 3}}
             _body = dict()
             _body["doc_as_upsert"] = True
@@ -418,12 +401,10 @@ class Preprocessor:
             es.bulk(body)
             del temp, body
 
-
     def _get_term_vectors(self, es, len_df):
         print(''' get_sorted_term_vectors ''')
 
         term_vectors_dict = dict()
-        #     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
         term_vectors = es.search(index=opt.es_index, size=10000, scroll='1m',
                                         filter_path=['hits.hits._source.sorted_term', 'hits.hits._source.pid',
                                                      '_scroll_id'])
@@ -450,10 +431,7 @@ class Preprocessor:
         print(''' get_sorted_term_vectors ''')
 
         term_vectors_dict = dict()
-        #     # TODO ES_INDEX : conf.es_nouns_index or conf.es_adjv_index
-
         count_list = list(range(0, len(df), 5000)) + [len(df)]
-
 
         for idx in range(len(count_list) - 1):
             print("terms vector : {}".format((idx+1) * 5000))
@@ -476,37 +454,12 @@ class Preprocessor:
 
 
     def _make_es(self):
-        es = Elasticsearch()  # TODO conf
+        es = Elasticsearch(opt.es_host)
         time.sleep(5)
-        print(dataset_dir+'put_es_index.sh')
-        subprocess.run(dataset_dir+'put_es_index.sh')
+
+        subprocess.run(data_dir+'put_es_index.sh')
         time.sleep(5)
         return es
-
-
-    def make_parsed_product_temp(self):
-        es = Elasticsearch()
-
-        for data_name in ['dev', 'test']:
-            print(data_name)
-            df = pd.read_pickle(dataset_dir+'df_product_'+data_name+'.pkl')
-
-            print(''' char 단위 pre-processing ''')
-            df['product'] = self._preprecess_product_by_char(df['product'])
-
-            # self._bulk_product_to_es(es, df)
-            # self._sort_term_vectors(es, df)
-            term_vectors_dict = self._get_term_vectors_v2(es, df)
-
-            print('merge dfs')
-            df_temp = pd.DataFrame.from_dict(term_vectors_dict, orient='index')
-            df_temp = df_temp.reset_index()
-            df_temp.columns = ['pid', 'term_vector']
-            df = df.merge(df_temp, on=['pid'])
-            del df_temp
-
-            df.to_pickle(dataset_dir+'df_product_'+data_name+'_dataset.pkl')
-            del df
 
     def make_parsed_product(self):
         es = self._make_es()
@@ -531,11 +484,11 @@ class Preprocessor:
             df = df.merge(df_temp, on=['pid'])
             del df_temp
 
-            df.to_pickle(dataset_dir + 'df_product_'+ data_name +'_dataset.pkl')
+            df.to_pickle(data_dir + 'df_product_'+ data_name +'_dataset.pkl')
             del df
 
     def make_d2v_model(self):
-        df = pd.read_pickle(dataset_dir + 'df_product_train_dataset.pkl')
+        df = pd.read_pickle(data_dir + 'df_product_train_dataset.pkl')
         df.term_vector = [term_vector.split() for term_vector in df.term_vector.tolist()]
 
         del df['product']
@@ -546,7 +499,10 @@ class Preprocessor:
         model.train(documents, epochs=model.epochs, total_examples=model.corpus_count)
         del df
 
-        model.save(dataset_dir + 'doc2vec.model')
+        model.save(data_dir + 'doc2vec.model')
+
+        model.delete_temporary_training_data(keep_doctags_vectors=False, keep_inference=True)
+        model.save(data_dir + 'reduced_doc2vec.model')
 
 
 if __name__ == '__main__':
