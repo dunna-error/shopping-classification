@@ -304,6 +304,7 @@ class Data:
         except:
             print(d2v)
             print(term_vector)
+            print(h['product'][i])
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
         div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
