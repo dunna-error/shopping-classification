@@ -298,7 +298,7 @@ class Data:
         now = time.time()
         term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
         d2v = self._get_d2v(term_vector)
-        logger.info("spend %d second" % int(time.time() - now))
+        self.logger.info("spend %d second" % int(time.time() - now))
 
         img_feat = h['img_feat'][i]
         price_lev = self._get_price_level(h['price'][i])
