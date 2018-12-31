@@ -296,18 +296,22 @@ class Data:
         if Y is None and self.div in ['dev', 'test']:
             Y = -1
 
-        raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
-        b2v = self._get_b2v(str(raw_tag))
-        term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
-        d2v = 0
         try:
-            d2v = self._get_d2v(term_vector)
-        except:
-            d2v = np.zeros((opt.d2v_feat_len,))
-        img_feat = h['img_feat'][i]
-        price_lev = self._get_price_level(h['price'][i])
-        div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
-        aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
+            raw_tag = self._get_trimed_tag(h['brand'][i].decode('utf-8'), h['maker'][i].decode('utf-8'))
+            b2v = self._get_b2v(str(raw_tag))
+            term_vector = self._get_term_vector(h['pid'][i].decode('utf-8'))
+            d2v = 0
+            if term_vector is None:
+                d2v = np.zeros((opt.d2v_feat_len,))
+            else:
+                d2v = self._get_d2v(term_vector)
+            img_feat = h['img_feat'][i]
+            price_lev = self._get_price_level(h['price'][i])
+            div_stand_unix_time = self.time_aging_dict[div]['stand_unix_time']
+            aging = self._get_unix_time_aging(div_stand_unix_time, str(h['updttm'][i]), div)
+        except Exception as e:
+            self.logger.info(e)
+
         return Y, (b2v, img_feat, price_lev, aging, d2v)
 
     def create_dataset(self, g, size):
