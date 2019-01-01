@@ -205,7 +205,7 @@ class Classifier():
                             validation_steps=self.validation_steps,
                             shuffle=True,
                             callbacks=[checkpoint],
-                            verbose=2)
+                            verbose=1)
 
         model.load_weights(self.weight_fname) # loads from checkout point if exists
         open(self.model_fname + '.json', 'w').write(model.to_json())
