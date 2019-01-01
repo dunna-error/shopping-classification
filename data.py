@@ -30,21 +30,17 @@ import traceback
 from multiprocessing import Pool
 
 from gensim.models import Doc2Vec, Word2Vec
-from elasticsearch5 import Elasticsearch
 import tqdm
 import fire
 import h5py
 import numpy as np
 import six
 from six.moves import cPickle
-# import pandas as pd
 
 
 from misc import get_logger, Option
 opt = Option('./config.json')
 
-
-es = Elasticsearch(hosts=opt.es_host)
 
 class Reader(object):
     def __init__(self, data_path_list, div, begin_offset, end_offset):
