@@ -36,7 +36,7 @@ def top1_acc(x, y):
 class ShopNet:
     def __init__(self):
         self.logger = get_logger('shopnet')
-        self.input_size = 17891 - 15639
+        self.input_size = 2352
 
     def get_model(self, num_classes):
         with tf.device('/gpu:0'):

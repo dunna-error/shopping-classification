@@ -48,8 +48,7 @@ class Classifier():
         self.logger = get_logger('Classifier')
         self.num_classes = 0
         self.encoded_dict = {
-            "price_lev": 3,
-            "tag": 15639
+            "price_lev": 3
         }
 
     def get_sample_generator(self, ds, batch_size, raise_stop_event=False):
@@ -62,12 +61,12 @@ class Classifier():
             X = np.reshape(X, (X.shape[0], 1))
 
             # list value feature
-            for t in ['b2v', 'img_feat']:
+            for t in ['b2v', 'img_feat', 'd2v']:
                 x = ds[t][left:right, :]
                 X = np.hstack((X, x))
 
             # 1-length categorical feature
-            for t in ['price_lev']: # for t in ['price_lev', 'tag']:
+            for t in ['price_lev']:
                 x = ds[t][left:right]
                 encoded = np.zeros((x.shape[0], self.encoded_dict[t]))
                 for i in range(left-left, right-left):
@@ -80,7 +79,7 @@ class Classifier():
             for i in range(left-left, right-left):
                 encoded_Y[i][Y[i]] = 1
 
-            # result return shape : (1024, 2252) // (1024, 4215)
+            # result return shape : (1024, 2352) // (1024, 4215)
             yield X, encoded_Y
             left = right
             if right == limit:
