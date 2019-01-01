@@ -40,7 +40,7 @@
         "."
     ],
     "num_epochs": 30,
-    "batch_size": 1024,
+    "batch_size": 2048,
     "lr": 1e-4,
     "es_host": "127.0.0.1",
     "es_index": "product_index",
