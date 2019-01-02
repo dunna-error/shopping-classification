@@ -487,6 +487,17 @@ class Preprocessor:
             df.to_pickle(data_dir + 'df_product_'+ data_name +'_dataset.pkl')
             del df
 
+        df_term_vector = pd.concat([
+            pd.read_pickle('./data/df_product_train_dataset.pkl'),
+            pd.read_pickle('./data/df_product_dev_dataset.pkl'),
+            pd.read_pickle('./data/df_product_test_dataset.pkl')],
+            axis=0)
+
+        term_vector_dict = pd.Series(df_term_vector.term_vector.values, index=df_term_vector.pid).to_dict()
+
+        with open('./data/' + 'term_vector_dict.pickle', 'wb') as f:
+            pickle.dump(term_vector_dict, f, pickle.HIGHEST_PROTOCOL)
+
     def make_d2v_model(self):
         df = pd.read_pickle(data_dir + 'df_product_train_dataset.pkl')
         df.term_vector = [term_vector.split() for term_vector in df.term_vector.tolist()]
@@ -511,7 +522,6 @@ if __name__ == '__main__':
         'make_df': preprocessor.make_df,
         'make_dict': preprocessor.make_dict,
         'make_b2v_model': preprocessor.make_b2v_model,
-        'make_parsed_product_temp': preprocessor.make_parsed_product_temp,
         'make_parsed_product': preprocessor.make_parsed_product,
         'make_d2v_model': preprocessor.make_d2v_model
     })
