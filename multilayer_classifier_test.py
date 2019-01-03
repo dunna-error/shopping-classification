@@ -258,13 +258,13 @@ class Classifier():
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
         # load y_sequential model
         b_model_fname = model_root + '/b_model.h5'
-        # m_model_fname = model_root + '/m_model.h5'
-        # s_model_fname = model_root + '/s_model.h5'
-        # d_model_fname = model_root + '/d_model.h5'
+        m_model_fname = model_root + '/m_model.h5'
+        s_model_fname = model_root + '/s_model.h5'
+        d_model_fname = model_root + '/d_model.h5'
         self.b_model = load_model(b_model_fname, custom_objects={'top1_acc': top1_acc})
-        # self.m_model = load_model(m_model_fname, custom_objects={'top1_acc': top1_acc})
-        # self.s_model = load_model(s_model_fname, custom_objects={'top1_acc': top1_acc})
-        # self.d_model = load_model(d_model_fname, custom_objects={'top1_acc': top1_acc})
+        self.m_model = load_model(m_model_fname, custom_objects={'top1_acc': top1_acc})
+        self.s_model = load_model(s_model_fname, custom_objects={'top1_acc': top1_acc})
+        self.d_model = load_model(d_model_fname, custom_objects={'top1_acc': top1_acc})
 
         test_path = os.path.join(test_root, 'data.h5py')
         test_data = h5py.File(test_path, 'r')
@@ -278,7 +278,8 @@ class Classifier():
             for chunk in test_gen:
                 total_test_samples = test['y'].shape[0]
                 X = chunk
-                b,m,s,d = self.sequential_predict(X)  # _pred_y = '1>32>412>321'
+                b,m,s,d = self.sequential_predict(X)
+                print(b)
                 pbar.update(X[0].shape[0])
         # self.write_prediction_result(test, b,m,s,d, out_path, readable=readable)
 
