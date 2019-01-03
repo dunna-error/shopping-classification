@@ -21,7 +21,10 @@
         - `pip install -r requirements.txt`
     - 필요한 써드파티 라이브러리를 설치합니다.
         - Elastic Seach
-            - aaa
+            - 형태소 분석을 위해 elasticsearch의 한글 형태소 분석기인 nori를 사용합니다.
+            - elaticsearch v6.5, nori-plugin 설치가 필수로 요구됩니다.
+            - elaticsearch 설치 : https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html
+            - nori 설치 : http://joonable.tistory.com/10?category=682569
 1. Data Preprocessing
     - 데이터셋을 생성하기 전, 필요한 전처리 작업들을 수행합니다.
         - 빠른 개발을 위해, Dataframe 형태로 데이터를 변환합니다.
@@ -80,6 +83,6 @@
         - `'img_feat', 'pid'` : 원본 그대로 사용
         - `price_lev` : 결측값을 제외한 전체 가격 데이터를 기준으로 (quantile 0.3, 0.7)을 기준으로 가격을 3개의 카테고리로 분류. 결측값은 '중' 가격으로 치환
         - `aging` : 데이터의 updttm을 기준으로 아이템의 생성 나이를 구한 뒤, min-max scaling
-        - `d2v` : product 피처 정보를 Doc2Vect 알고리즘으로 새롭게 생성.
+        - `d2v` : product 피처 정보를 Doc2Vec 알고리즘으로 새롭게 생성.
 2. Modeling
     - 이미지
