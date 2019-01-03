@@ -45,8 +45,6 @@ else:
 
 
 class Classifier():
-    reversed_meta_path = './data/reverse_y_vocab'
-
     def __init__(self):
         self.logger = get_logger('Classifier')
         self.num_classes = 0
@@ -55,7 +53,6 @@ class Classifier():
         }
         self.cate_index_dict = pickle.load(open('./data/cate_index_dict.pickle', 'rb'))
         self.predict_encoder = pickle.load(open('./data/predict_encoder.pickle', 'rb'))
-        self.reversed_meta = cPickle.loads(open(self.reversed_meta_path, 'rb').read())
         self.cate_split_index = {"b": 0, "m": 1, "s": 2, "d": 3}
         self.prev_cate_list = {"m": "b", "s": "m", "d": "s"}
         self.b_model = None
@@ -165,13 +162,7 @@ class Classifier():
                 if raise_stop_event:
                     raise StopIteration
 
-    def get_inverted_cate1(self, cate1):
-        inv_cate1 = {}
-        for d in ['b', 'm', 's', 'd']:
-            inv_cate1[d] = {v: k for k, v in six.iteritems(cate1[d])}
-        return inv_cate1
-
-    def write_prediction_result(self, data, pred_y, out_path, readable):
+    def write_prediction_result(self, data, pred_b, pred_m, pred_s, pred_d, out_path, readable):
         # 개발 테스트용 pid order
         pid_order = []
         pid_order.extend(data['pid'][::])
@@ -187,26 +178,11 @@ class Classifier():
         #     pid_order.extend(h['pid'][::])
 
         # file write
-        y2l = {i: s for s, i in six.iteritems(meta['y_vocab'])}
-        y2l = list(map(lambda x: x[1], sorted(y2l.items(), key=lambda x: x[0])))
-        inv_cate1 = self.get_inverted_cate1(cate1)
         rets = {}
-        for pid, y in zip(data['pid'], pred_y):
+        for pid, b, m, s, d in zip(data['pid'], pred_b, pred_m, pred_s, pred_d):
             if six.PY3:
                 pid = pid.decode('utf-8')
-            label = y2l[y]
-            tkns = list(map(int, label.split('>')))
-            b, m, s, d = tkns
-            assert b in inv_cate1['b']
-            assert m in inv_cate1['m']
-            assert s in inv_cate1['s']
-            assert d in inv_cate1['d']
             tpl = '{pid}\t{b}\t{m}\t{s}\t{d}'
-            if readable:
-                b = inv_cate1['b'][b]
-                m = inv_cate1['m'][m]
-                s = inv_cate1['s'][s]
-                d = inv_cate1['d'][d]
             rets[pid] = tpl.format(pid=pid, b=b, m=m, s=s, d=d)
         no_answer = '{pid}\t-1\t-1\t-1\t-1'
         with open(out_path, 'w') as fout:
@@ -249,10 +225,9 @@ class Classifier():
         new_X = np.hstack((X, s_cate_ohv))
 
         # append d
-        d_cate_ohv = self.s_model.predict(new_X)
+        d_cate_ohv = self.d_model.predict(new_X)
         idx_list = np.argmax(d_cate_ohv, axis=1).tolist()
         d_y_list = [self.predict_encoder['d'][i] for i in idx_list]
-
         return b_y_list, m_y_list, s_y_list, d_y_list
 
     def predict(self, data_root, model_root, test_root, test_div, out_path, readable=False):
@@ -270,7 +245,10 @@ class Classifier():
         test_data = h5py.File(test_path, 'r')
         test = test_data[test_div]
         batch_size = opt.batch_size
-        pred_y = []
+        pred_b = []
+        pred_m = []
+        pred_s = []
+        pred_d = []
         test_gen = ThreadsafeIter(self.get_predict_sample_generator(test, batch_size, raise_stop_event=True))
         total_test_samples = test['y'].shape[0]
 
@@ -279,9 +257,12 @@ class Classifier():
                 total_test_samples = test['y'].shape[0]
                 X = chunk
                 b,m,s,d = self.sequential_predict(X)
-                print(b)
+                pred_b.extend(b)
+                pred_m.extend(m)
+                pred_s.extend(s)
+                pred_d.extend(d)
                 pbar.update(X[0].shape[0])
-        # self.write_prediction_result(test, b,m,s,d, out_path, readable=readable)
+        self.write_prediction_result(test, pred_b, pred_m, pred_s, pred_d, out_path, readable=readable)
 
     def train(self, data_root, out_dir, target_cate):
         data_path = os.path.join(data_root, 'data.h5py')

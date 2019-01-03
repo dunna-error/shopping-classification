@@ -65,8 +65,6 @@ class ShopNet:
 
     def get_m_model(self, num_classes):
         with tf.device('/gpu:0'):
-            # 2048/1024/512, 0.15 : loss: 1.2410 - top1_acc: 0.6798 - val_loss: 0.6773 - val_top1_acc: 0.7899, 90메가
-            # now :
             optm = keras.optimizers.Nadam(opt.lr)
             i_layer = Input(shape=(self.m_input_size,))
             h_layer = Dense(4096, activation='relu')(i_layer)
@@ -99,10 +97,10 @@ class ShopNet:
         with tf.device('/gpu:0'):
             optm = keras.optimizers.Nadam(opt.lr)
             i_layer = Input(shape=(self.d_input_size,))
-            h_layer = Dense(2048, activation='relu')(i_layer)
+            h_layer = Dense(4096, activation='relu')(i_layer)
             h_layer = Dropout(0.15)(h_layer)
+            h_layer = Dense(2048, activation='relu')(h_layer)
             h_layer = Dense(1024, activation='relu')(h_layer)
-            h_layer = Dropout(0.15)(h_layer)
             h_layer = Dense(512, activation='relu')(h_layer)
             o_layer = Dense(num_classes, activation='softmax')(h_layer)
             model = Model(inputs=i_layer, outputs=o_layer)
