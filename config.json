@@ -39,7 +39,7 @@
         "",
         "."
     ],
-    "num_epochs": 30,
+    "num_epochs": 1,
     "batch_size": 2048,
     "lr": 1e-4,
     "es_host": "127.0.0.1",
@@ -57,5 +57,11 @@
                 "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few",
                 "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so",
                 "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"],
-    "ko_stopwords" : []
+    "ko_stopwords" : [],
+    "y_vocab_len": {
+        "b": 57,
+        "m": 552,
+        "s": 3190,
+        "d": 404
+    }
 }

@@ -11,4 +11,3 @@
 *.model
 *.h5
 server_config.json
-*_test.py
