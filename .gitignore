@@ -12,3 +12,4 @@
 *.h5
 server_config.json
 *.out
+*_test.py
