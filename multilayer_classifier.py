@@ -193,35 +193,35 @@ class Classifier():
                 fout.write(ans)
                 fout.write('\n')
 
-    def sequential_predict(self, X):
+    def sequential_predict(self, X): # todo: comment and hide list -> one hot vector VS origin vector TEST
         # append b
         b_cate_ohv = self.b_model.predict(X)
         idx_list = np.argmax(b_cate_ohv, axis=1).tolist()
         b_y_list = [self.predict_encoder['b'][i] for i in idx_list]
-        b_cate_ohv.fill(0)
-        for row in range(0, b_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            b_cate_ohv[row][idx] = 1
+        # b_cate_ohv.fill(0)
+        # for row in range(0, b_cate_ohv.shape[0]):
+        #     idx = idx_list.pop(0)
+        #     b_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, b_cate_ohv))
 
         # append m
         m_cate_ohv = self.m_model.predict(new_X)
         idx_list = np.argmax(m_cate_ohv, axis=1).tolist()
         m_y_list = [self.predict_encoder['m'][i] for i in idx_list]
-        m_cate_ohv.fill(0)
-        for row in range(0, m_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            m_cate_ohv[row][idx] = 1
+        # m_cate_ohv.fill(0)
+        # for row in range(0, m_cate_ohv.shape[0]):
+        #     idx = idx_list.pop(0)
+        #     m_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, m_cate_ohv))
 
         # append s
         s_cate_ohv = self.s_model.predict(new_X)
         idx_list = np.argmax(s_cate_ohv, axis=1).tolist()
         s_y_list = [self.predict_encoder['s'][i] for i in idx_list]
-        s_cate_ohv.fill(0)
-        for row in range(0, s_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            s_cate_ohv[row][idx] = 1
+        # s_cate_ohv.fill(0)
+        # for row in range(0, s_cate_ohv.shape[0]):
+        #     idx = idx_list.pop(0)
+        #     s_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, s_cate_ohv))
 
         # append d

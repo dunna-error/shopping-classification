@@ -85,4 +85,4 @@
         - `aging` : 데이터의 updttm을 기준으로 아이템의 생성 나이를 구한 뒤, min-max scaling
         - `d2v` : product 피처 정보를 Doc2Vec 알고리즘으로 새롭게 생성.
 2. Modeling
-    - 이미지
+    - ![img](https://github.com/dunna-error/shopping-classification/blob/master/images/model_architecture.PNG)
