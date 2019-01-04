@@ -35,7 +35,7 @@ from keras.callbacks import ModelCheckpoint
 from six.moves import zip, cPickle
 
 from misc import get_logger, Option
-from multilayer_network_test import ShopNet, top1_acc
+from multilayer_network import ShopNet, top1_acc
 
 opt = Option('./config.json')
 if six.PY2:
@@ -281,8 +281,7 @@ class Classifier():
         self.logger.info('# of train samples: %s' % train['y'].shape[0])
         self.logger.info('# of dev samples: %s' % dev['y'].shape[0])
 
-        checkpoint = ModelCheckpoint(self.weight_fname, monitor='val_loss',
-                                     save_best_only=True, mode='min', period=1)
+        checkpoint = ModelCheckpoint(self.weight_fname, monitor='loss', save_best_only=True, mode='min', period=1)
 
         shopnet = ShopNet()
         if target_cate == 'b':
@@ -303,15 +302,15 @@ class Classifier():
         next(train_gen)
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
-        total_dev_samples = dev['y'].shape[0]
-        dev_gen = self.get_sample_generator(dev, batch_size=opt.batch_size, target_cate=target_cate)
-        self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
+        # total_dev_samples = dev['y'].shape[0]
+        # dev_gen = self.get_sample_generator(dev, batch_size=opt.batch_size, target_cate=target_cate)
+        # self.validation_steps = int(np.ceil(total_dev_samples / float(opt.batch_size)))
 
         model.fit_generator(generator=train_gen,
                             steps_per_epoch=self.steps_per_epoch,
                             epochs=opt.num_epochs,
-                            validation_data=dev_gen,
-                            validation_steps=self.validation_steps,
+                            # validation_data=dev_gen,
+                            # validation_steps=self.validation_steps,
                             shuffle=True,
                             callbacks=[checkpoint],
                             verbose=1)
