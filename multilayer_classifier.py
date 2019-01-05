@@ -163,14 +163,14 @@ class Classifier():
                     raise StopIteration
 
     def write_prediction_result(self, data, pred_b, pred_m, pred_s, pred_d, out_path, readable):
-        # 개발 테스트용 pid order
-        pid_order = []
-        pid_order.extend(data['pid'][::])
-        # # dev 제출용 pid order
+        # # 개발 테스트용 pid order
         # pid_order = []
-        # for data_path in opt.dev_data_list:
-        #     h = h5py.File(data_path, 'r')['dev']
-        #     pid_order.extend(h['pid'][::])
+        # pid_order.extend(data['pid'][::])
+        # dev 제출용 pid order
+        pid_order = []
+        for data_path in opt.dev_data_list:
+            h = h5py.File(data_path, 'r')['dev']
+            pid_order.extend(h['pid'][::])
         # # 최종 제출용 pid order
         # pid_order = []
         # for data_path in opt.test_data_list:
@@ -198,30 +198,30 @@ class Classifier():
         b_cate_ohv = self.b_model.predict(X)
         idx_list = np.argmax(b_cate_ohv, axis=1).tolist()
         b_y_list = [self.predict_encoder['b'][i] for i in idx_list]
-        # b_cate_ohv.fill(0)
-        # for row in range(0, b_cate_ohv.shape[0]):
-        #     idx = idx_list.pop(0)
-        #     b_cate_ohv[row][idx] = 1
+        b_cate_ohv.fill(0)
+        for row in range(0, b_cate_ohv.shape[0]):
+            idx = idx_list.pop(0)
+            b_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, b_cate_ohv))
 
         # append m
         m_cate_ohv = self.m_model.predict(new_X)
         idx_list = np.argmax(m_cate_ohv, axis=1).tolist()
         m_y_list = [self.predict_encoder['m'][i] for i in idx_list]
-        # m_cate_ohv.fill(0)
-        # for row in range(0, m_cate_ohv.shape[0]):
-        #     idx = idx_list.pop(0)
-        #     m_cate_ohv[row][idx] = 1
+        m_cate_ohv.fill(0)
+        for row in range(0, m_cate_ohv.shape[0]):
+            idx = idx_list.pop(0)
+            m_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, m_cate_ohv))
 
         # append s
         s_cate_ohv = self.s_model.predict(new_X)
         idx_list = np.argmax(s_cate_ohv, axis=1).tolist()
         s_y_list = [self.predict_encoder['s'][i] for i in idx_list]
-        # s_cate_ohv.fill(0)
-        # for row in range(0, s_cate_ohv.shape[0]):
-        #     idx = idx_list.pop(0)
-        #     s_cate_ohv[row][idx] = 1
+        s_cate_ohv.fill(0)
+        for row in range(0, s_cate_ohv.shape[0]):
+            idx = idx_list.pop(0)
+            s_cate_ohv[row][idx] = 1
         new_X = np.hstack((X, s_cate_ohv))
 
         # append d
