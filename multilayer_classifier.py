@@ -251,12 +251,16 @@ class Classifier():
         shopnet = ShopNet()
         if target_cate == 'b':
             model = shopnet.get_b_model(self.num_classes)
+            model = load_model("./model/train/b_model.h5", custom_objects={'top1_acc': top1_acc})
         elif target_cate == 'm':
             model = shopnet.get_m_model(self.num_classes)
+            model = load_model("./model/train/m_model.h5", custom_objects={'top1_acc': top1_acc})
         elif target_cate == 's':
             model = shopnet.get_s_model(self.num_classes)
+            model = load_model("./model/train/s_model.h5", custom_objects={'top1_acc': top1_acc})
         elif target_cate == 'd':
             model = shopnet.get_d_model(self.num_classes)
+            model = load_model("./model/train/d_model.h5", custom_objects={'top1_acc': top1_acc})
         else:
             self.logger.info('unvalid input category parameter, try again.')
             return
