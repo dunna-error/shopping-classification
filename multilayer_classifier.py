@@ -130,31 +130,11 @@ class Classifier():
                         filter_idx_list.append(i)
                     encoded_Y[i][idx] = 1
 
-            # add prev_cate information to X
-            if target_cate == "b":
-                pass
-            elif target_cate == "m":
-                pre_cate = self.prev_cate_list[target_cate]
-                encoded_prev_Y = np.zeros((Y.shape[0], opt.y_vocab_len[pre_cate]))
-                for i in range(left - left, right - left):
-                    idx = self.cate_index_dict[pre_cate][Y[i]]
-                    encoded_prev_Y[i][idx] = 1
-                X = np.hstack((X, encoded_prev_Y))
-            else:
-                pre_cate = self.prev_cate_list[target_cate]
-                encoded_prev_Y = np.zeros((Y.shape[0], opt.y_vocab_len[pre_cate]))
-                for i in range(left - left, right - left):
-                    idx = self.cate_index_dict[pre_cate][Y[i]]
-                    if idx == 0:
-                        prev_filter_idx_list.append(i)
-                    encoded_prev_Y[i][idx] = 1
-                X = np.hstack((X, encoded_prev_Y))
-
             rm_list = np.unique(filter_idx_list + prev_filter_idx_list)
             X = np.delete(X, rm_list, 0)
             encoded_Y = np.delete(encoded_Y, rm_list, 0)
 
-            # result return shape : (batch_size, 2352+len(prev_cate)) // (batch_size, len(cate))
+            # result return shape : (batch_size, 2352) // (batch_size, len(cate))
             yield X, encoded_Y
             left = right
             if right == limit:
@@ -198,34 +178,19 @@ class Classifier():
         b_cate_ohv = self.b_model.predict(X)
         idx_list = np.argmax(b_cate_ohv, axis=1).tolist()
         b_y_list = [self.predict_encoder['b'][i] for i in idx_list]
-        b_cate_ohv.fill(0)
-        for row in range(0, b_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            b_cate_ohv[row][idx] = 1
-        new_X = np.hstack((X, b_cate_ohv))
 
         # append m
-        m_cate_ohv = self.m_model.predict(new_X)
+        m_cate_ohv = self.m_model.predict(X)
         idx_list = np.argmax(m_cate_ohv, axis=1).tolist()
         m_y_list = [self.predict_encoder['m'][i] for i in idx_list]
-        m_cate_ohv.fill(0)
-        for row in range(0, m_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            m_cate_ohv[row][idx] = 1
-        new_X = np.hstack((X, m_cate_ohv))
 
         # append s
-        s_cate_ohv = self.s_model.predict(new_X)
+        s_cate_ohv = self.s_model.predict(X)
         idx_list = np.argmax(s_cate_ohv, axis=1).tolist()
         s_y_list = [self.predict_encoder['s'][i] for i in idx_list]
-        s_cate_ohv.fill(0)
-        for row in range(0, s_cate_ohv.shape[0]):
-            idx = idx_list.pop(0)
-            s_cate_ohv[row][idx] = 1
-        new_X = np.hstack((X, s_cate_ohv))
 
         # append d
-        d_cate_ohv = self.d_model.predict(new_X)
+        d_cate_ohv = self.d_model.predict(X)
         idx_list = np.argmax(d_cate_ohv, axis=1).tolist()
         d_y_list = [self.predict_encoder['d'][i] for i in idx_list]
         return b_y_list, m_y_list, s_y_list, d_y_list
@@ -299,7 +264,6 @@ class Classifier():
 
         total_train_samples = train['y'].shape[0]
         train_gen = self.get_sample_generator(train, batch_size=opt.batch_size, target_cate=target_cate)
-        next(train_gen)
         self.steps_per_epoch = int(np.ceil(total_train_samples / float(opt.batch_size)))
 
         # total_dev_samples = dev['y'].shape[0]

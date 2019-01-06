@@ -37,9 +37,9 @@ class ShopNet:
     def __init__(self):
         self.logger = get_logger('shopnet')
         self.b_input_size = 2352
-        self.m_input_size = 2409
-        self.s_input_size = 2904
-        self.d_input_size = 5542
+        self.m_input_size = 2352
+        self.s_input_size = 2352
+        self.d_input_size = 2352
 
     def get_b_model(self, num_classes):
         with tf.device('/gpu:0'):
@@ -60,9 +60,8 @@ class ShopNet:
         with tf.device('/gpu:0'):
             optm = keras.optimizers.Nadam(opt.lr)
             i_layer = Input(shape=(self.m_input_size,))
-            h_layer = Dense(4096, activation='relu')(i_layer)
+            h_layer = Dense(2048, activation='relu')(i_layer)
             h_layer = Dropout(0.15)(h_layer)
-            h_layer = Dense(2048, activation='relu')(h_layer)
             h_layer = Dense(1024, activation='relu')(h_layer)
             h_layer = Dense(512, activation='relu')(h_layer)
             o_layer = Dense(num_classes, activation='softmax')(h_layer)
@@ -90,9 +89,8 @@ class ShopNet:
         with tf.device('/gpu:0'):
             optm = keras.optimizers.Nadam(opt.lr)
             i_layer = Input(shape=(self.d_input_size,))
-            h_layer = Dense(4096, activation='relu')(i_layer)
+            h_layer = Dense(2048, activation='relu')(i_layer)
             h_layer = Dropout(0.15)(h_layer)
-            h_layer = Dense(2048, activation='relu')(h_layer)
             h_layer = Dense(1024, activation='relu')(h_layer)
             h_layer = Dense(512, activation='relu')(h_layer)
             o_layer = Dense(num_classes, activation='softmax')(h_layer)
